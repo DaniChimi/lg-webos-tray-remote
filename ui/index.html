@@ -94,7 +94,6 @@
   .pad small { font-size: 11px; }
   .pad.locked { border-style: solid; border-color: var(--accent); color: var(--text);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
-  .padlock { position: absolute; right: 6px; bottom: 6px; min-height: 28px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
   select, input[type=text] { width: 100%; background: var(--glass-in); box-shadow: inset 0 1px 2px rgba(0,0,0,.2); }
   input[type=text] { user-select: text; cursor: text; }
   input::placeholder { color: var(--muted); }
@@ -264,7 +263,6 @@
     </div>
     <div id="pad" class="pad" hidden tabindex="0" data-i18n-aria="trackpad" aria-label="Trackpad per il puntatore della TV">
       <span id="padtext"><span id="padmain" data-i18n="pad_move">Muovi qui il mouse</span><br><small id="padhint" data-i18n="pad_hint">clic = clic · rotella = scorrimento · tasto destro = indietro</small></span>
-      <button id="padlock" class="padlock" data-i18n-title="pad_lock_title" title="Blocca il cursore nel riquadro per movimenti illimitati (Esc per uscire)" data-i18n="pad_lock">⌖ Blocca</button>
     </div>
     <div class="keys">
       <button data-key="MENU" data-i18n-aria="k_menu" data-i18n-title="k_menu" aria-label="Menu" title="Menu"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
@@ -374,9 +372,9 @@ const DICT = {
     mute: 'Muto', audio: 'Audio', vol_down: 'Volume giù', vol_up: 'Volume su', input: 'Ingresso', input_ph: 'Ingresso…',
     remote: 'Telecomando', remote_mode: 'Modalità telecomando', keys: 'Tasti', mouse: 'Mouse',
     up: 'Su', down: 'Giù', left: 'Sinistra', right: 'Destra', k_menu: 'Menu', k_home: 'Home', k_back: 'Indietro', k_exit: 'Esci',
-    trackpad: 'Trackpad per il puntatore della TV', pad_move: 'Muovi qui il mouse', pad_locked: 'Bloccato: la tastiera scrive sulla TV',
-    pad_hint: 'clic = clic · rotella = scorrimento · tasto destro = indietro', pad_hint_locked: 'clic = clic · tasto destro = indietro · Esc per uscire',
-    pad_lock: '⌖ Blocca', pad_lock_title: 'Blocca il cursore nel riquadro per movimenti illimitati (Esc per uscire)',
+    trackpad: 'Trackpad per il puntatore della TV', pad_move: 'Clicca qui per controllare la TV', pad_locked: 'Bloccato: la tastiera scrive sulla TV',
+    pad_hint: 'il cursore resta nel riquadro · Esc per uscire', pad_hint_locked: 'clic = clic · tasto destro = indietro · Esc per uscire',
+   
     apps: 'App', apps_ph: 'Avvia app…', text: 'Testo', kbd_ph: 'Scrivi qui per scrivere sulla TV',
     kbd_title: 'Seleziona un campo sulla TV, poi scrivi. Invio, ⌫ e frecce vengono inoltrati.', kbd_aria: 'Tastiera PC verso la TV',
     toast_ph: 'Messaggio a schermo', send: 'Invia', shot: 'Screenshot', shot_title: 'Salva lo schermo della TV in Immagini\\TV Screenshots',
@@ -404,9 +402,9 @@ const DICT = {
     mute: 'Mute', audio: 'Sound', vol_down: 'Volume down', vol_up: 'Volume up', input: 'Input', input_ph: 'Input…',
     remote: 'Remote', remote_mode: 'Remote mode', keys: 'Keys', mouse: 'Mouse',
     up: 'Up', down: 'Down', left: 'Left', right: 'Right', k_menu: 'Menu', k_home: 'Home', k_back: 'Back', k_exit: 'Exit',
-    trackpad: 'Trackpad for the TV pointer', pad_move: 'Move the mouse here', pad_locked: 'Locked: the keyboard types on the TV',
-    pad_hint: 'click = click · wheel = scroll · right button = back', pad_hint_locked: 'click = click · right button = back · Esc to exit',
-    pad_lock: '⌖ Lock', pad_lock_title: 'Lock the cursor inside the area for unlimited movement (Esc to exit)',
+    trackpad: 'Trackpad for the TV pointer', pad_move: 'Click here to control the TV', pad_locked: 'Locked: the keyboard types on the TV',
+    pad_hint: 'the cursor stays in the area · Esc to exit', pad_hint_locked: 'click = click · right button = back · Esc to exit',
+   
     apps: 'Apps', apps_ph: 'Launch app…', text: 'Text', kbd_ph: 'Type here to type on the TV',
     kbd_title: 'Select a field on the TV, then type. Enter, ⌫ and arrows are forwarded.', kbd_aria: 'PC keyboard to the TV',
     toast_ph: 'On-screen message', send: 'Send', shot: 'Screenshot', shot_title: 'Save the TV screen to Pictures\\TV Screenshots',
@@ -705,7 +703,7 @@ kbd.addEventListener('keydown', (e) => {
 
 // PC trackpad → TV pointer (Magic Remote).
 const pad = $('pad');
-const SENS = 1.8;                       // movement multiplier
+const SENS = 2.0;                       // movement multiplier
 let accX = 0, accY = 0, padTimer = null, padWarned = false;
 const padErr = (e) => { if (!padWarned) { padWarned = true; say(String(e), true); } };
 
@@ -727,11 +725,12 @@ function flushPad() {
   if (dx || dy) invoke('tv_pointer', { kind: 'move', dx, dy }).catch(padErr);
 }
 pad.addEventListener('pointermove', (e) => {
+  if (!padLocked()) return;   // the pointer only moves with the cursor locked, so it can never run out of room
   accX += e.movementX * SENS; accY += e.movementY * SENS;
   if (!padTimer) padTimer = setTimeout(flushPad, 16);   // about 60 sends per second
 });
-pad.addEventListener('click', (e) => {
-  if (e.target.id === 'padlock') return;
+pad.addEventListener('click', () => {
+  if (!padLocked()) { pad.requestPointerLock?.(); return; }   // the first click takes control; Esc gives it back
   invoke('tv_pointer', { kind: 'click' }).catch(padErr);
 });
 pad.addEventListener('contextmenu', (e) => {
@@ -743,7 +742,6 @@ pad.addEventListener('wheel', (e) => {
   const dy = Math.max(-100, Math.min(100, Math.round(-e.deltaY / 4)));
   if (dy) invoke('tv_pointer', { kind: 'scroll', dy }).catch(padErr);
 }, { passive: false });
-$('padlock').onclick = (e) => { e.stopPropagation(); pad.requestPointerLock?.(); };
 const padLocked = () => document.pointerLockElement === pad;
 document.addEventListener('pointerlockchange', () => {
   const on = padLocked();

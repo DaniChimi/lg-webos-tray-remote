@@ -30,8 +30,9 @@ the TV. It uses the TV's local control protocol (SSAP, port 3001).
   automatically the first time you power off from the panel).
 - **Sound:** volume up and down, mute.
 - **Inputs and apps:** switch input (HDMI…), launch installed apps.
-- **Remote:** directional pad with OK, Menu, Home, Back, Exit. In *Mouse* mode the area works as a
-  trackpad (TV pointer) with click, wheel and right button = back.
+- **Remote:** directional pad with OK, Menu, Home, Back, Exit. In *Mouse* mode, click the area to
+  take control: the cursor stays inside it and works as a trackpad (TV pointer) with click, wheel
+  and right button = back; *Esc* gives the cursor back.
 - **Text:** the PC keyboard types into the active text field on the TV.
 - **On-screen message:** shows a notification on the TV.
 - **Screenshot:** saves the TV screen to `Pictures\TV Screenshots`.
