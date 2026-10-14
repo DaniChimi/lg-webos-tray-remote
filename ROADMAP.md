@@ -1,6 +1,6 @@
 # TV Tray — possible next steps
 
-Ideas deferred after version 0.2.1. None is implemented; the order is not a priority.
+Ideas deferred after version 0.3.0. None is implemented; the order is not a priority.
 
 ## SSH module (Developer Mode)
 
