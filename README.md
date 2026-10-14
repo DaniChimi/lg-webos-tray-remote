@@ -16,11 +16,30 @@ the TV. It uses the TV's local control protocol (SSAP, port 3001).
   <img src="docs/img/desktop-en.png" alt="TV Tray panel open above the Windows system tray" width="720">
 </p>
 
-<p align="center">
-  <img src="docs/img/panel-en.png" alt="TV Tray remote panel" width="300">
-  &nbsp;&nbsp;
-  <img src="docs/img/settings-en.png" alt="TV Tray settings" width="300">
-</p>
+<table>
+  <tr>
+    <td align="center" valign="top" width="25%">
+      <img src="docs/img/panel-en.png" alt="Keys mode" width="200"><br>
+      <b>Keys</b><br>
+      <sub>Directional pad, volume, inputs and apps, with Menu, Home, Back and Exit.</sub>
+    </td>
+    <td align="center" valign="top" width="25%">
+      <img src="docs/img/mouse-en.png" alt="Mouse mode" width="200"><br>
+      <b>Mouse</b><br>
+      <sub>Click the area to lock the cursor and use it as a trackpad. Esc releases it.</sub>
+    </td>
+    <td align="center" valign="top" width="25%">
+      <img src="docs/img/numbers-en.png" alt="Number pad" width="200"><br>
+      <b>Numbers</b><br>
+      <sub>Digits, channel up and down, OK, channel list and dash to pick a channel by number.</sub>
+    </td>
+    <td align="center" valign="top" width="25%">
+      <img src="docs/img/settings-en.png" alt="Settings" width="200"><br>
+      <b>Settings</b><br>
+      <sub>TV address, language, start with Windows and pairing.</sub>
+    </td>
+  </tr>
+</table>
 
 <sub>Illustrative images: the desktop is a mock-up and the IP and MAC addresses are placeholder values.</sub>
 
