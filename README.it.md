@@ -12,6 +12,14 @@ Usa il protocollo di controllo locale della TV (SSAP, porta 3001).
 
 > Provata su una TV LG con webOS 25. Su altri modelli e versioni il comportamento non è verificato.
 
+<p align="center">
+  <img src="docs/img/panel-it.png" alt="Pannello telecomando di TV Tray" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/img/settings-it.png" alt="Impostazioni di TV Tray" width="300">
+</p>
+
+<sub>Le schermate usano valori di esempio per indirizzo IP e MAC.</sub>
+
 ## Cosa fa
 
 - **Accensione e spegnimento:** spegne la TV; la accende con Wake-on-LAN (il MAC viene rilevato

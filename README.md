@@ -12,6 +12,14 @@ the TV. It uses the TV's local control protocol (SSAP, port 3001).
 
 > Tested on an LG TV running webOS 25. Behaviour on other models and versions is not verified.
 
+<p align="center">
+  <img src="docs/img/panel-en.png" alt="TV Tray remote panel" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/img/settings-en.png" alt="TV Tray settings" width="300">
+</p>
+
+<sub>Screenshots use placeholder values for the IP and MAC address.</sub>
+
 ## Features
 
 - **Power:** turns the TV off; turns it on with Wake-on-LAN (the MAC address is detected
