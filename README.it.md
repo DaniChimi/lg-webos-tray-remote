@@ -13,14 +13,33 @@ Usa il protocollo di controllo locale della TV (SSAP, porta 3001).
 > Provata su una TV LG con webOS 25. Su altri modelli e versioni il comportamento non è verificato.
 
 <p align="center">
-  <img src="docs/img/desktop-it.png" alt="Pannello di TV Tray aperto sopra la barra di Windows" width="720">
+  <img src="docs/img/demo-it.gif" alt="Demo animata sul desktop di Windows: collegamento alla TV, poi passaggio tra Tasti, Mouse, Numeri e Impostazioni" width="720">
 </p>
 
-<p align="center">
-  <img src="docs/img/panel-it.png" alt="Pannello telecomando di TV Tray" width="300">
-  &nbsp;&nbsp;
-  <img src="docs/img/settings-it.png" alt="Impostazioni di TV Tray" width="300">
-</p>
+<table>
+  <tr>
+    <td align="center" valign="top" width="25%">
+      <img src="docs/img/panel-it.png" alt="Modalità Tasti" width="200"><br>
+      <b>Tasti</b><br>
+      <sub>Croce direzionale, volume, ingressi e app, con Menu, Home, Indietro ed Esci.</sub>
+    </td>
+    <td align="center" valign="top" width="25%">
+      <img src="docs/img/mouse-it.png" alt="Modalità Mouse" width="200"><br>
+      <b>Mouse</b><br>
+      <sub>Clicca il riquadro per bloccare il cursore e usarlo da trackpad. Esc lo rilascia.</sub>
+    </td>
+    <td align="center" valign="top" width="25%">
+      <img src="docs/img/numbers-it.png" alt="Tastierino numerico" width="200"><br>
+      <b>Numeri</b><br>
+      <sub>Cifre, canale su e giù, OK, elenco canali e trattino per scegliere un canale col numero.</sub>
+    </td>
+    <td align="center" valign="top" width="25%">
+      <img src="docs/img/settings-it.png" alt="Impostazioni" width="200"><br>
+      <b>Impostazioni</b><br>
+      <sub>Indirizzo della TV, lingua, avvio con Windows e collegamento.</sub>
+    </td>
+  </tr>
+</table>
 
 <sub>Immagini illustrative: il desktop è un mock-up e indirizzo IP e MAC sono valori di esempio.</sub>
 
