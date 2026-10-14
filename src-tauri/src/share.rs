@@ -1,8 +1,8 @@
-//! Condivisione temporanea di un file del PC con la TV.
+//! Temporary sharing of a PC file with the TV.
 //!
-//! Avvia un piccolo server HTTP sulla LAN che serve **solo** il file scelto, sotto un
-//! percorso con token casuale. La TV lo apre dal suo browser. Il server si ferma dopo
-//! un'ora, oppure quando si condivide un altro file.
+//! Starts a small HTTP server on the LAN that serves **only** the chosen file, under a
+//! random-token path. The TV opens it from its browser. The server stops after
+//! one hour, or when another file is shared.
 
 use std::{
     collections::hash_map::RandomState,
@@ -19,7 +19,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-/// Diario delle richieste (per capire cosa fa la TV): %TEMP%	vtray-share.log
+/// Request log (to see what the TV does): %TEMP%	vtray-share.log
 fn log(line: &str) {
     let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let path = std::env::temp_dir().join("tvtray-share.log");
@@ -63,7 +63,7 @@ fn percent_encode(s: &str) -> String {
     out
 }
 
-/// Token non indovinabile sulla LAN: seed casuale del sistema + tempo.
+/// Token that cannot be guessed on the LAN: system random seed + time.
 fn token() -> String {
     let mut h = RandomState::new().build_hasher();
     let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
@@ -74,12 +74,12 @@ fn token() -> String {
     format!("{:016x}{:016x}", a, h2.finish())
 }
 
-/// Interpreta `Range: bytes=a-b`. Restituisce (inizio, fine inclusa) oppure None se non valido.
+/// Parses `Range: bytes=a-b`. Returns (start, inclusive end) or None if invalid.
 fn parse_range(value: &str, len: u64) -> Option<(u64, u64)> {
     let spec = value.trim().strip_prefix("bytes=")?;
     let (a, b) = spec.split_once('-')?;
     if a.is_empty() {
-        // ultimi N byte
+        // last N bytes
         let n: u64 = b.parse().ok()?;
         if n == 0 || len == 0 {
             return None;
@@ -102,18 +102,18 @@ fn respond(s: &mut TcpStream, status: &str, extra: &str, body: &[u8]) {
 
 fn handle(mut s: TcpStream, path: &Path, prefix: &str, mime: &str, len: u64) {
     let peer = s.peer_addr().map(|a| a.to_string()).unwrap_or_default();
-    log(&format!("connessione da {peer}"));
+    log(&format!("connection from {peer}"));
     let _ = s.set_read_timeout(Some(Duration::from_secs(10)));
     let mut buf = [0u8; 4096];
     let n = match s.read(&mut buf) {
         Ok(n) if n > 0 => n,
         _ => {
-            log(&format!("{peer}: nessuna richiesta ricevuta (connessione chiusa o scaduta)"));
+            log(&format!("{peer}: no request received (connection closed or timed out)"));
             return;
         }
     };
     let req = String::from_utf8_lossy(&buf[..n]).to_string();
-    log(&format!("{peer}: richiesta:
+    log(&format!("{peer}: request:
 {}", req.trim_end()));
     let mut lines = req.lines();
     let first = lines.next().unwrap_or("");
@@ -150,7 +150,7 @@ fn handle(mut s: TcpStream, path: &Path, prefix: &str, mime: &str, len: u64) {
         head.push_str(&format!("Content-Range: bytes {start}-{end}/{len}\r\n"));
     }
     head.push_str("\r\n");
-    log(&format!("{peer}: risposta {status}, {size} byte, {mime}"));
+    log(&format!("{peer}: response {status}, {size} bytes, {mime}"));
     if s.write_all(head.as_bytes()).is_err() || method == "HEAD" || size == 0 {
         return;
     }
@@ -168,25 +168,25 @@ fn handle(mut s: TcpStream, path: &Path, prefix: &str, mime: &str, len: u64) {
             Ok(0) | Err(_) => break,
             Ok(n) => {
                 if s.write_all(&chunk[..n]).is_err() {
-                    break; // la TV ha chiuso la connessione (normale con i video)
+                    break; // the TV closed the connection (normal with videos)
                 }
                 remaining -= n as u64;
                 sent += n as u64;
             }
         }
     }
-    log(&format!("{peer}: inviati {sent} di {size} byte"));
+    log(&format!("{peer}: sent {sent} of {size} bytes"));
 }
 
-/// Avvia la condivisione e restituisce l'indirizzo da dare alla TV.
+/// Starts the sharing and returns the address to give to the TV.
 pub fn start(path: PathBuf, local_ip: Ipv4Addr) -> Result<String, String> {
     let meta = fs::metadata(&path).map_err(|e| e.to_string())?;
     if !meta.is_file() {
-        return Err("il percorso scelto non è un file".into());
+        return Err(crate::i18n::t("not_file"));
     }
     let len = meta.len();
 
-    // ferma l'eventuale condivisione precedente
+    // stop any previous sharing
     if let Some(old) = CURRENT.lock().unwrap().take() {
         old.store(true, Ordering::SeqCst);
     }
@@ -199,7 +199,7 @@ pub fn start(path: PathBuf, local_ip: Ipv4Addr) -> Result<String, String> {
     let prefix = format!("/{}/", token());
     let url = format!("http://{local_ip}:{port}{prefix}{}", percent_encode(&name));
 
-    log(&format!("condivisione avviata: {url} (file {}, {len} byte)", path.display()));
+    log(&format!("sharing started: {url} (file {}, {len} bytes)", path.display()));
     let stop = Arc::new(AtomicBool::new(false));
     *CURRENT.lock().unwrap() = Some(stop.clone());
 
@@ -254,7 +254,7 @@ mod tests {
         use std::net::TcpStream;
         let dir = std::env::temp_dir().join("tvtray-share-test");
         let _ = fs::create_dir_all(&dir);
-        let file = dir.join("prova.txt");
+        let file = dir.join("test.txt");
         fs::write(&file, b"0123456789").unwrap();
         let url = start(file, Ipv4Addr::LOCALHOST).unwrap();
         let rest = url.strip_prefix("http://").unwrap();
@@ -275,7 +275,7 @@ mod tests {
         assert!(part.starts_with("HTTP/1.1 206"), "{part}");
         assert!(part.contains("Content-Range: bytes 2-4/10"));
         assert!(part.ends_with("234"));
-        let wrong = get("/token-sbagliato/prova.txt", "");
+        let wrong = get("/wrong-token/test.txt", "");
         assert!(wrong.starts_with("HTTP/1.1 404"), "{wrong}");
     }
 }

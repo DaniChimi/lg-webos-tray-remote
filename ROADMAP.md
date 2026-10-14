@@ -1,45 +1,54 @@
-# TV Tray — evoluzioni possibili
+# TV Tray — possible next steps
 
-Idee rimandate dopo la versione 0.2.0. Nessuna è implementata; l'ordine non è una priorità.
+Ideas deferred after version 0.2.1. None is implemented; the order is not a priority.
 
-## Modulo SSH (Developer Mode)
+## SSH module (Developer Mode)
 
-Collegamento SSH alla TV (porta 9922, utente `prisoner`) con la passphrase mostrata dall'app
-*Developer Mode* sulla TV. La passphrase si inserisce una sola volta nelle Impostazioni e viene
-conservata cifrata con DPAPI, come la chiave SSAP. Il key server è sulla porta 9991 e risponde
-solo con l'app Developer Mode aperta sulla TV.
+SSH connection to the TV (port 9922, user `prisoner`) with the passphrase shown by the
+*Developer Mode* app on the TV. The passphrase would be entered once in Settings and stored
+encrypted with DPAPI, like the SSAP key. The key server is on port 9991 and only answers while the
+Developer Mode app is open on the TV.
 
-È la base delle voci successive.
+This is the basis for the items below.
 
-## Rinnovo automatico della sessione Developer Mode
+## Automatic Developer Mode session renewal
 
-Evitare di riaprire a mano l'app *Developer Mode* sulla TV quando la sessione sta per scadere.
+Avoid reopening the *Developer Mode* app on the TV by hand when the session is about to expire.
 
-- Leggere via SSH `/var/luna/preferences/devmode_enabled` per ottenere il `sessionToken`.
-- Rinnovare con `https://developer.lge.com/secure/ResetDevModeSession.dev?sessionToken=<token>`.
-- Leggere la scadenza con `https://developer.lge.com/secure/CheckDevModeSession.dev`.
-- Controllo all'avvio e a intervalli; rinnovo quando mancano meno di circa 12 ore.
-- Nelle Impostazioni: «Sessione Developer Mode: scade tra N h» e interruttore «Rinnova automaticamente».
-- Token conservato cifrato con DPAPI.
+- Read `/var/luna/preferences/devmode_enabled` over SSH to get the `sessionToken`.
+- Renew with `https://developer.lge.com/secure/ResetDevModeSession.dev?sessionToken=<token>`.
+- Read the expiry with `https://developer.lge.com/secure/CheckDevModeSession.dev`.
+- Check at startup and at intervals; renew when less than about 12 hours remain.
+- In Settings: “Developer Mode session: expires in N h” and a “Renew automatically” switch.
+- Token stored encrypted with DPAPI.
 
-Da verificare sulla TV reale: durata effettiva dell'estensione, eventuale cookie o parametri
-aggiuntivi, comportamento a sessione già scaduta (potrebbe servire riattivarla dalla TV).
-Fonte degli indirizzi: stringhe di `webos-dev-manager.exe`.
+To verify on a real TV: how long the extension actually lasts, any extra cookie or parameters,
+behaviour when the session has already expired (it may need reactivating from the TV).
+Source of the addresses: strings in `webos-dev-manager.exe`.
 
-## Invio file reale e installazione app
+## Real file sending and app installation
 
-Con SSH: copiare file in `/media/developer` e installare pacchetti `.ipk`, invece di aprire solo
-un URL nel browser della TV. Lettura dei log di sistema.
+With SSH: copy files to `/media/developer` and install `.ipk` packages, instead of only opening
+a URL in the TV's browser. Read system logs.
 
-## Interfaccia
+## Interface
 
-- Icona della tray che cambia stato (TV raggiungibile o no).
-- Conferma prima di «Spegni».
-- Campo opzionale «Importa chiave» per riusare una chiave SSAP già esistente senza rifare il pairing.
+- Tray icon that changes state (TV reachable or not).
+- Confirmation before “Power off”.
+- Optional “Import key” field to reuse an existing SSAP key without pairing again.
+- More languages: add a dictionary to `ui/index.html` and the table in `src-tauri/src/i18n.rs`.
 
-## Da verificare sulla TV reale (funzioni già presenti)
+## Other platforms
 
-- Invio file: apertura sulla TV con `system.launcher/open`.
-- Tastiera PC → TV su un campo di testo reale (accenti, tasti morti, Ctrl+V).
-- Scorrimento con la rotella (`type: scroll`, non documentato).
-- Installazione dall'installer e avvio automatico con Windows.
+macOS and Linux builds. The Windows-specific parts are the key encryption (DPAPI), the ARP
+lookup for the MAC address, “show file” after a screenshot, the blur window effect and the
+panel placement above the tray icon. They would need the system keychain, `arp`/`ip neigh` and
+per-platform window handling, plus testing on real machines.
+
+## To verify on a real TV (features already present)
+
+- Image sending from the app with a large photo (it is resized to 1920×1080 first).
+- App list populated in the panel.
+- PC keyboard to TV in a real text field (accents, dead keys, Ctrl+V).
+- Scrolling with the wheel (`type: scroll`, undocumented).
+- Installation from the installer and start with Windows.

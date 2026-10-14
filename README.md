@@ -1,88 +1,93 @@
 # TV Tray
 
-Piccola app per Windows che vive nella barra delle applicazioni, accanto all'orologio, e
-controlla una **TV LG webOS** sulla stessa rete: telecomando, volume, ingressi, app,
-messaggi a schermo, screenshot e invio di immagini.
+🇬🇧 English · 🇮🇹 [Italiano](README.it.md)
 
-Funziona senza Developer Mode, senza account LG e senza installare nulla sulla TV.
-Usa il protocollo di controllo locale della TV (SSAP, porta 3001).
+A small Windows app that lives in the system tray, next to the clock, and controls an
+**LG webOS TV** on the same network: remote, volume, inputs, apps, on-screen messages,
+screenshots and image sending.
 
-> Provata su una TV LG con webOS 25. Su altri modelli e versioni il comportamento non è verificato.
+It works without Developer Mode, without an LG account and without installing anything on the TV.
+It uses the TV's local control protocol (SSAP, port 3001).
 
-## Cosa fa
+> Tested on an LG TV running webOS 25. Behaviour on other models and versions is not verified.
 
-- **Accensione e spegnimento:** spegne la TV; la accende con Wake-on-LAN (il MAC viene rilevato
-  da solo la prima volta che la spegni dal pannello).
-- **Audio:** volume su e giù, muto.
-- **Ingressi e app:** cambia ingresso (HDMI…), avvia le app installate.
-- **Telecomando:** croce direzionale con OK, Menu, Home, Indietro, Esci. In modalità *Mouse* il
-  riquadro funziona da trackpad (puntatore della TV), con clic, rotella e tasto destro = indietro.
-- **Testo:** la tastiera del PC scrive nel campo di testo attivo sulla TV.
-- **Messaggio a schermo:** mostra un avviso sulla TV.
-- **Screenshot:** salva lo schermo della TV in `Immagini\TV Screenshots`.
-- **Invia immagine:** mostra un JPG o PNG del PC sul browser della TV. L'immagine viene ridotta
-  a 1920×1080 prima dell'invio; l'originale non viene toccato.
-- **Ricerca della TV** sulla rete e collegamento guidato; avvio automatico con Windows (opzionale).
+## Features
 
-## Primo avvio
+- **Power:** turns the TV off; turns it on with Wake-on-LAN (the MAC address is detected
+  automatically the first time you power off from the panel).
+- **Sound:** volume up and down, mute.
+- **Inputs and apps:** switch input (HDMI…), launch installed apps.
+- **Remote:** directional pad with OK, Menu, Home, Back, Exit. In *Mouse* mode the area works as a
+  trackpad (TV pointer) with click, wheel and right button = back.
+- **Text:** the PC keyboard types into the active text field on the TV.
+- **On-screen message:** shows a notification on the TV.
+- **Screenshot:** saves the TV screen to `Pictures\TV Screenshots`.
+- **Send image:** shows a JPG or PNG from the PC in the TV's browser. The image is resized to
+  1920×1080 before sending; the original is not touched.
+- **Language:** English and Italian, selectable in Settings (follows Windows by default).
+- **TV discovery** on the network with guided pairing; optional start with Windows.
 
-1. Avvia TV Tray: compare l'icona nella barra e il pannello si apre da solo.
-2. L'app cerca le TV LG sulla rete. Se ne trova una la collega; sulla TV compare una richiesta
-   di accoppiamento: accettala con il telecomando.
-3. Da qui in poi il pannello si apre con un clic sull'icona; il tasto destro apre il menu
-   (Apri, Spegni TV, Esci).
+## First run
 
-La TV deve essere accesa e sulla stessa rete del PC. Se la ricerca non la trova, inserisci
-l'indirizzo IP a mano da **Impostazioni**.
+1. Start TV Tray: the tray icon appears and the panel opens by itself.
+2. The app looks for LG TVs on the network. If it finds one it pairs with it; the TV shows a
+   pairing request: accept it with the remote.
+3. From then on the panel opens with a click on the icon; right-click opens the menu
+   (Open panel, Turn TV off, Quit).
 
-## Dove sono i dati e le chiavi
+The TV must be on and on the same network as the PC. If discovery does not find it, enter the
+IP address by hand in **Settings**.
 
-- La configurazione sta in `%APPDATA%\dev.daniele.tvtray\config.json`: indirizzo IP, MAC e la
-  chiave di accoppiamento.
-- La chiave di accoppiamento è **cifrata con la protezione dati di Windows (DPAPI)**: vale solo
-  per il tuo utente su questo PC. Se cambi utente o PC bisogna rifare l'accoppiamento.
-- Nessuna chiave è nel codice né nel repository. «Scollega da questa TV» nelle Impostazioni
-  cancella indirizzo, MAC e chiave.
-- Per l'invio delle immagini l'app apre per breve tempo un piccolo server HTTP sulla rete
-  locale, con un indirizzo non indovinabile, e lo chiude dopo un'ora o all'invio successivo.
-  Windows può chiedere di consentire l'accesso al firewall.
+## Where data and keys are stored
 
-## Compilare
+- Configuration lives in `%APPDATA%\dev.daniele.tvtray\config.json`: IP address, MAC address,
+  language and the pairing key.
+- The pairing key is **encrypted with Windows data protection (DPAPI)**: it is valid only for your
+  user on this PC. If you change user or PC you need to pair again.
+- No key is in the code or in the repository. “Unpair from this TV” in Settings erases the IP,
+  MAC and key.
+- To send images the app briefly opens a small HTTP server on the local network, at an
+  unguessable address, and closes it after one hour or at the next send. Windows may ask you to
+  allow firewall access.
 
-Servono Rust (toolchain MSVC) e `tauri-cli` 2.x.
+## Build
+
+You need Rust (MSVC toolchain) and `tauri-cli` 2.x.
 
 ```powershell
 cd src-tauri
-cargo run                 # versione di sviluppo (debug)
-cargo tauri build         # installer NSIS in src-tauri\target\release\bundle\nsis
+cargo run                 # development build (debug)
+cargo tauri build         # NSIS installer in src-tauri\target\release\bundle\nsis
 ```
 
-L'interfaccia è un unico file `ui/index.html` (HTML, CSS e JavaScript, senza bundler),
-incorporato nell'eseguibile al momento della compilazione.
+The interface is a single `ui/index.html` file (HTML, CSS and JavaScript, no bundler),
+embedded in the executable at build time.
 
-L'installer non è firmato: Windows mostra l'avviso SmartScreen alla prima esecuzione.
+The installer is not signed: Windows shows the SmartScreen warning on first run.
 
-## Struttura
+## Layout
 
-| Percorso | Contenuto |
+| Path | Content |
 |---|---|
-| `ui/index.html` | Interfaccia del pannello |
-| `src-tauri/src/main.rs` | Comandi, tray, finestra, configurazione |
-| `src-tauri/src/ssap.rs` | Client SSAP verso la TV |
-| `src-tauri/src/discovery.rs` | Ricerca delle TV sulla rete |
-| `src-tauri/src/dpapi.rs` | Cifratura della chiave con DPAPI |
-| `src-tauri/src/capture.rs` | Screenshot |
-| `src-tauri/src/share.rs` | Server temporaneo per l'invio delle immagini |
+| `ui/index.html` | Panel interface and its English/Italian dictionary |
+| `src-tauri/src/main.rs` | Commands, tray, window, configuration |
+| `src-tauri/src/ssap.rs` | SSAP client for the TV |
+| `src-tauri/src/discovery.rs` | TV discovery on the network |
+| `src-tauri/src/dpapi.rs` | Key encryption with DPAPI |
+| `src-tauri/src/capture.rs` | Screenshots |
+| `src-tauri/src/share.rs` | Temporary server for sending images |
+| `src-tauri/src/i18n.rs` | Native messages (English and Italian) |
 
-## Evoluzioni
+## Roadmap
 
-Le idee rimandate sono in [`ROADMAP.md`](ROADMAP.md).
+Deferred ideas are in [`ROADMAP.md`](ROADMAP.md).
 
-## Riconoscimenti
+## Acknowledgements
 
-- Il manifesto dei permessi (`src-tauri/src/pairing.json`) deriva da
-  [`lgtv2`](https://github.com/hobbyquaker/lgtv2) (licenza MIT).
-- Il funzionamento del protocollo SSAP e di Developer Mode è stato ricavato dall'osservazione
-  della TV e di [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop)
-  (Apache-2.0); nessun suo codice è incluso.
-- TV Tray non è affiliata a LG Electronics. «LG» e «webOS» sono marchi dei rispettivi proprietari.
+- The permission manifest (`src-tauri/src/pairing.json`) derives from
+  [`lgtv2`](https://github.com/hobbyquaker/lgtv2) (MIT licence).
+- How the SSAP protocol and Developer Mode work was learned by observing the TV and
+  [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop) (Apache-2.0);
+  none of its code is included.
+- TV Tray is not affiliated with LG Electronics. “LG” and “webOS” are trademarks of their
+  respective owners.

@@ -1,5 +1,5 @@
 src-tauri/target/
 src-tauri/gen/
-# Contiene la chiave di pairing con la TV: mai nel repository
+# Holds the TV pairing key: never commit it
 config.json
 .client-key.json

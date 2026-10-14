@@ -31,12 +31,12 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "shortDescription": "Controllo rapido della TV LG webOS dalla barra di Windows",
+    "shortDescription": "Quick control of an LG webOS TV from the Windows system tray",
     "icon": ["icons/icon.ico", "icons/32x32.png", "icons/128x128.png"],
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["Italian"],
+        "languages": ["English", "Italian"],
         "displayLanguageSelector": false
       }
     }
