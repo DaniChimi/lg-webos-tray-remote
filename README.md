@@ -1,13 +1,14 @@
-# TV Tray
+# TV Tray: LG webOS TV remote for the Windows system tray
 
 🇬🇧 English · 🇮🇹 [Italiano](README.it.md)
 
-A small Windows app that lives in the system tray, next to the clock, and controls an
-**LG webOS TV** on the same network: remote, volume, inputs, apps, on-screen messages,
-screenshots and image sending.
+A small Windows app that lives in the system tray, next to the clock, and works as an
+**LG TV remote control for Windows 10 and 11**. It controls an **LG webOS TV** on the same
+network: remote, volume, inputs, apps, on-screen messages, screenshots and image sending, and
+turns the TV on with **Wake-on-LAN**.
 
-It works without Developer Mode, without an LG account and without installing anything on the TV.
-It uses the TV's local control protocol (SSAP, port 3001).
+It works without Developer Mode, without an LG ThinQ account and without installing anything on
+the TV. It uses the TV's local control protocol (SSAP, port 3001).
 
 > Tested on an LG TV running webOS 25. Behaviour on other models and versions is not verified.
 
