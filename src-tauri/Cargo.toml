@@ -2,6 +2,7 @@
 name = "tv-tray"
 version = "0.3.0"
 description = "Quick control of an LG webOS TV from the Windows system tray"
+license = "MIT"
 edition = "2021"
 
 [profile.dev.package."*"]
