@@ -16,6 +16,10 @@ the TV. It uses the TV's local control protocol (SSAP, port 3001).
   <img src="docs/img/desktop-en.png" alt="TV Tray panel open above the Windows system tray" width="720">
 </p>
 
+<p align="center">
+  <img src="docs/img/demo-en.gif" alt="Animated demo: pairing with the TV, then switching between Keys, Mouse, Numbers and Settings" width="300">
+</p>
+
 <table>
   <tr>
     <td align="center" valign="top" width="25%">
