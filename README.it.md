@@ -13,11 +13,7 @@ Usa il protocollo di controllo locale della TV (SSAP, porta 3001).
 > Provata su una TV LG con webOS 25. Su altri modelli e versioni il comportamento non è verificato.
 
 <p align="center">
-  <img src="docs/img/desktop-it.png" alt="Pannello di TV Tray aperto sopra la barra di Windows" width="720">
-</p>
-
-<p align="center">
-  <img src="docs/img/demo-it.gif" alt="Demo animata: collegamento alla TV, poi passaggio tra Tasti, Mouse, Numeri e Impostazioni" width="300">
+  <img src="docs/img/demo-it.gif" alt="Demo animata sul desktop di Windows: collegamento alla TV, poi passaggio tra Tasti, Mouse, Numeri e Impostazioni" width="720">
 </p>
 
 <table>
