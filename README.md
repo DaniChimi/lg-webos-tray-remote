@@ -49,7 +49,7 @@ IP address by hand in **Settings**.
 
 ## Where data and keys are stored
 
-- Configuration lives in `%APPDATA%\dev.daniele.tvtray\config.json`: IP address, MAC address,
+- Configuration lives in `%APPDATA%\app.tvtray\config.json`: IP address, MAC address,
   language and the pairing key.
 - The pairing key is **encrypted with Windows data protection (DPAPI)**: it is valid only for your
   user on this PC. If you change user or PC you need to pair again.

@@ -49,7 +49,7 @@ l'indirizzo IP a mano da **Impostazioni**.
 
 ## Dove sono i dati e le chiavi
 
-- La configurazione sta in `%APPDATA%\dev.daniele.tvtray\config.json`: indirizzo IP, MAC e la
+- La configurazione sta in `%APPDATA%\app.tvtray\config.json`: indirizzo IP, MAC e la
   chiave di accoppiamento.
 - La chiave di accoppiamento è **cifrata con la protezione dati di Windows (DPAPI)**: vale solo
   per il tuo utente su questo PC. Se cambi utente o PC bisogna rifare l'accoppiamento.
