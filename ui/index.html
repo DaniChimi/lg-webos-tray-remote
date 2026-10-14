@@ -297,13 +297,17 @@
       <button id="fclose" class="icon" data-i18n-aria="close" aria-label="Chiudi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </header>
     <section>
-      <p id="fstatus" class="status" data-i18n="scanning">Scansione della rete in corso…</p>
+      <p id="fstatus" class="status" role="status"></p>
       <div id="flist" class="list"></div>
     </section>
     <div class="row">
       <button id="fagain" class="grow" data-i18n="search_again">Cerca di nuovo</button>
       <button id="fmanual" class="grow" data-i18n="enter_ip">Inserisci IP</button>
     </div>
+    <section>
+      <label for="flang" data-i18n="language">Lingua</label>
+      <select id="flang"><option value="auto" data-i18n="lang_auto">Automatica (sistema)</option><option value="it">Italiano</option><option value="en">English</option></select>
+    </section>
     <footer class="foot"><div id="msg3" class="msg"></div><span class="ver" data-i18n-title="version" title="Versione di TV Tray">v 0.3.0</span></footer>
   </div>
 
@@ -379,7 +383,7 @@ const DICT = {
     err_not_tauri: 'non in esecuzione dentro Tauri', mac_unknown: 'non ancora rilevato', paired_yes: 'collegata', paired_no: 'non collegata',
     autostart_on: 'Si avvierà con Windows', autostart_off: 'Avvio automatico disattivato', autostart_fail: 'Avvio automatico non modificato: ',
     apps_fail: 'Elenco app non disponibile: ', none_found: "Nessuna TV LG trovata. Controlla che sia accesa e sulla stessa rete, poi riprova oppure inserisci l’IP a mano.",
-    found_one: 'Trovata una TV:', found_many: 'Trovate {n} TV, scegli quella da collegare:', default_tv: 'TV LG webOS', also: 'anche', to_verify: 'da verificare',
+    found_one: 'Trovata una TV, clicca per collegarla:', found_many: 'Trovate {n} TV, scegli quella da collegare:', default_tv: 'TV LG webOS', also: 'anche', to_verify: 'da verificare',
     connecting: 'Collego {name}… accetta il prompt sulla TV con il telecomando.', tv_paired: 'TV collegata', connect_fail: 'Collegamento non riuscito: ',
     powering_off: 'TV in spegnimento · MAC {mac} salvato per la riaccensione', capturing: 'Cattura in corso…', shot_saved: 'Screenshot salvato: ',
     opened_on_tv: 'Aperto sulla TV: ', mac_needed: 'MAC non ancora noto: viene rilevato alla prima volta che spegni la TV da qui.',
@@ -409,7 +413,7 @@ const DICT = {
     err_not_tauri: 'not running inside Tauri', mac_unknown: 'not detected yet', paired_yes: 'paired', paired_no: 'not paired',
     autostart_on: 'Will start with Windows', autostart_off: 'Autostart turned off', autostart_fail: 'Autostart not changed: ',
     apps_fail: 'App list unavailable: ', none_found: 'No LG TV found. Make sure it is on and on the same network, then try again or enter the IP by hand.',
-    found_one: 'Found one TV:', found_many: 'Found {n} TVs, pick the one to pair:', default_tv: 'LG webOS TV', also: 'also', to_verify: 'to be verified',
+    found_one: 'Found one TV, click it to pair:', found_many: 'Found {n} TVs, pick the one to pair:', default_tv: 'LG webOS TV', also: 'also', to_verify: 'to be verified',
     connecting: 'Pairing with {name}… accept the prompt on the TV with the remote.', tv_paired: 'TV paired', connect_fail: 'Pairing failed: ',
     powering_off: 'TV powering off · MAC {mac} saved for powering on', capturing: 'Capturing…', shot_saved: 'Screenshot saved: ',
     opened_on_tv: 'Opened on the TV: ', mac_needed: 'MAC address not known yet: it is detected the first time you power the TV off from here.',
@@ -446,7 +450,7 @@ function say(text, isErr = false) {
 
 function renderSettings(cfg) {
   if (cfg.lang_effective && cfg.lang_effective !== LANG) applyLang(cfg.lang_effective);
-  $('lang').value = cfg.lang || 'auto';
+  $('lang').value = $('flang').value = cfg.lang || 'auto';
   $('v-ip').textContent = cfg.ip || '–';
   $('v-mac').textContent = cfg.mac || (cfg.ip ? t('mac_unknown') : '–');
   const p = $('v-paired');
@@ -464,13 +468,16 @@ const openSettings = async () => {
   try { $('autostart').checked = await invoke('get_autostart'); } catch (_) { $('autostart').disabled = true; }
   $('settings').hidden = false;
 };
-$('lang').addEventListener('change', async (e) => {
-  try {
-    renderSettings(await invoke('set_language', { lang: e.target.value }));
-    run(refresh);   // rewrites the status in the new language
-    say(t('settings_saved'));
-  } catch (err) { say(String(err), true); }
-});
+for (const id of ['lang', 'flang']) {
+  $(id).addEventListener('change', async (e) => {
+    try {
+      renderSettings(await invoke('set_language', { lang: e.target.value }));
+      paintFinder();   // the finder status and list are redrawn in the new language
+      run(refresh);    // rewrites the status in the new language
+      say(t('settings_saved'));
+    } catch (err) { say(String(err), true); }
+  });
+}
 $('autostart').addEventListener('change', async (e) => {
   try {
     e.target.checked = await invoke('set_autostart', { enabled: e.target.checked });
@@ -524,39 +531,50 @@ async function loadLists() {
 }
 
 // Automatic discovery of LG TVs on the network, and pairing.
-async function discover(auto) {
+// The finder status and list are redrawn from this state, so a language change
+// can repaint them without scanning the network again.
+let fState = { k: 'scanning' };
+function paintFinder() {
+  const st = $('fstatus'), list = $('flist');
+  list.textContent = '';
+  switch (fState.k) {
+    case 'scanning': st.textContent = t('scanning'); break;
+    case 'none': st.textContent = t('none_found'); break;
+    case 'unlinked': st.textContent = t('unlinked'); break;
+    case 'connecting': st.textContent = t('connecting', { name: fState.name }); break;
+    case 'fail': st.textContent = t('connect_fail') + fState.err; break;
+    case 'found':
+      st.textContent = fState.list.length === 1 ? t('found_one') : t('found_many', { n: fState.list.length });
+      for (const f of fState.list) {
+        const b = document.createElement('button');
+        b.className = 'tv';
+        const label = document.createElement('span'); label.textContent = f.name || t('default_tv');
+        const sub = document.createElement('small');
+        const also = f.also.length ? t('also') + ' ' + f.also.join(', ') : null;
+        sub.textContent = [f.ip, also, f.model].filter(Boolean).join(' · ') + (f.via === 'ssdp' ? '' : ' · ' + t('to_verify'));
+        b.append(label, sub);
+        b.onclick = () => connectTo(f);
+        list.append(b);
+      }
+      break;
+  }
+}
+
+// Automatic discovery of LG TVs on the network. The user always picks the TV to pair.
+async function discover() {
   $('settings').hidden = true;
   $('finder').hidden = false;
-  $('flist').textContent = '';
-  $('fstatus').textContent = t('scanning');
+  fState = { k: 'scanning' }; paintFinder();
   $('fagain').disabled = true;
   let found = [];
   try { found = await invoke('discover_tvs'); } catch (e) { say(String(e), true); }
   $('fagain').disabled = false;
-
-  if (!found.length) {
-    $('fstatus').textContent = t('none_found');
-    return;
-  }
-  if (found.length === 1 && auto) return connectTo(found[0]);
-
-  $('fstatus').textContent = found.length === 1 ? t('found_one') : t('found_many', { n: found.length });
-  for (const f of found) {
-    const b = document.createElement('button');
-    b.className = 'tv';
-    const label = document.createElement('span'); label.textContent = f.name || t('default_tv');
-    const s = document.createElement('small');
-    const also = f.also.length ? t('also') + ' ' + f.also.join(', ') : null;
-    s.textContent = [f.ip, also, f.model].filter(Boolean).join(' · ') + (f.via === 'ssdp' ? '' : ' · ' + t('to_verify'));
-    b.append(label, s);
-    b.onclick = () => connectTo(f);
-    $('flist').append(b);
-  }
+  fState = found.length ? { k: 'found', list: found } : { k: 'none' };
+  paintFinder();
 }
 
 async function connectTo(f) {
-  $('flist').textContent = '';
-  $('fstatus').textContent = t('connecting', { name: f.name || f.ip });
+  fState = { k: 'connecting', name: f.name || f.ip }; paintFinder();
   try {
     await invoke('save_config', { ip: f.ip, mac: null });
     renderSettings(await invoke('pair'));
@@ -564,7 +582,7 @@ async function connectTo(f) {
     await refresh(); await loadLists();
     say(t('tv_paired'));
   } catch (e) {
-    $('fstatus').textContent = t('connect_fail') + e;
+    fState = { k: 'fail', err: String(e) }; paintFinder();
     setState(false);
   }
 }
@@ -572,7 +590,7 @@ async function connectTo(f) {
 async function init() {
   const cfg = await invoke('get_config');
   renderSettings(cfg);
-  if (!cfg.paired) { await discover(true); return; }
+  if (!cfg.paired) { await discover(); return; }
   await run(async () => { await refresh(); await loadLists(); });
 }
 
@@ -639,13 +657,12 @@ $('unlink').onclick = () => {
     setState(null);
     $('settings').hidden = true;
     $('finder').hidden = false;
-    $('flist').textContent = '';
-    $('fstatus').textContent = t('unlinked');
+    fState = { k: 'unlinked' }; paintFinder();
     say('');
   });
 };
-$('rescan').onclick = () => discover(false);
-$('fagain').onclick = () => discover(false);
+$('rescan').onclick = () => discover();
+$('fagain').onclick = () => discover();
 $('fclose').onclick = () => { $('finder').hidden = true; };
 $('fmanual').onclick = () => { $('finder').hidden = true; openSettings(); };
 // PC keyboard → active text field on the TV.
