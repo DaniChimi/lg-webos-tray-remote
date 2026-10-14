@@ -30,8 +30,9 @@ Usa il protocollo di controllo locale della TV (SSAP, porta 3001).
   da solo la prima volta che la spegni dal pannello).
 - **Audio:** volume su e giù, muto.
 - **Ingressi e app:** cambia ingresso (HDMI…), avvia le app installate.
-- **Telecomando:** croce direzionale con OK, Menu, Home, Indietro, Esci. In modalità *Mouse* il
-  riquadro funziona da trackpad (puntatore della TV), con clic, rotella e tasto destro = indietro.
+- **Telecomando:** croce direzionale con OK, Menu, Home, Indietro, Esci. In modalità *Mouse* clicca
+  il riquadro per prendere il controllo: il cursore resta al suo interno e funziona da trackpad
+  (puntatore della TV), con clic, rotella e tasto destro = indietro; *Esc* restituisce il cursore.
 - **Testo:** la tastiera del PC scrive nel campo di testo attivo sulla TV.
 - **Messaggio a schermo:** mostra un avviso sulla TV.
 - **Screenshot:** salva lo schermo della TV in `Immagini\TV Screenshots`.
