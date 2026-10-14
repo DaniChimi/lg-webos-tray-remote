@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TV Tray</title>
+<style>
+  /* Glassmorphism: la finestra è trasparente con acrylic di Windows; qui sopra stanno
+     superfici di vetro semitrasparenti, bordi sottili con riflesso e angoli ampi. */
+  :root {
+    color-scheme: dark;
+    --glass: rgba(255,255,255,.07); --glass-hi: rgba(255,255,255,.13); --glass-in: rgba(0,0,0,.18);
+    --line: rgba(255,255,255,.14); --line-hi: rgba(255,255,255,.28);
+    --text: #f5f6f8; --muted: rgba(235,238,245,.62);
+    --accent: #0a84ff; --accent-2: #5e5ce6; --ok: #30d158; --bad: #ff453a;
+    --r: 14px; --r-sm: 10px;
+    --shine: inset 0 1px 0 rgba(255,255,255,.18);
+    --tint: rgba(20,22,30,.10);
+    --overlay-bg: rgba(30,32,42,.97);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --glass: rgba(255,255,255,.45); --glass-hi: rgba(255,255,255,.75); --glass-in: rgba(0,0,0,.05);
+      --line: rgba(255,255,255,.7); --line-hi: rgba(0,0,0,.18);
+      --text: #1c1c1e; --muted: rgba(60,60,67,.65);
+      --shine: inset 0 1px 0 rgba(255,255,255,.9);
+      --tint: rgba(255,255,255,.08);
+      --overlay-bg: rgba(244,245,249,.97);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; color: var(--text);
+    font: 13px/1.35 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; user-select: none; overflow: hidden; }
+  html { background: transparent; }
+  body { background: var(--tint); }
+  main { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
+  main::-webkit-scrollbar { width: 0; }
+  header { display: flex; align-items: center; gap: 8px; }
+  main > header { padding: 8px 10px 8px 14px; background: var(--glass); border-bottom: 1px solid var(--line);
+    box-shadow: var(--shine); flex: none; }
+  .content { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; overflow: hidden; }
+  .content > section { padding: 10px; gap: 7px; }
+  .content button, .content select, .content input { min-height: 34px; padding: 6px 10px; }
+  .content .dpad button { min-height: 36px; }
+  .content .seg button { min-height: 26px; padding: 2px 11px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 28%, transparent), 0 0 12px var(--ok); }
+  .dot.off { background: var(--bad); box-shadow: 0 0 10px color-mix(in srgb, var(--bad) 70%, transparent); }
+  header h1 { font-size: 14px; margin: 0; font-weight: 600; flex: 1; letter-spacing: -.01em; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .row { display: flex; gap: 8px; }
+  button, select, input {
+    font: inherit; color: var(--text); background: var(--glass); border: 1px solid var(--line);
+    border-radius: var(--r-sm); padding: 9px 10px; min-height: 38px; box-shadow: var(--shine);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  }
+  select option { background: #2a2c36; color: #f5f6f8; }
+  button { cursor: pointer; transition: background .15s, transform .08s, border-color .15s, box-shadow .15s; }
+  button:hover { background: var(--glass-hi); border-color: var(--line-hi); }
+  button:active { transform: scale(.96); background: var(--glass-in); }
+  button:focus-visible, select:focus-visible, input:focus-visible {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+  button:disabled { opacity: .4; cursor: default; }
+  .grow { flex: 1; }
+  .primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 100%, #fff 12%), var(--accent));
+    border-color: color-mix(in srgb, var(--accent) 80%, #fff); color: #fff;
+    box-shadow: var(--shine), 0 4px 14px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .primary:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
+  .danger:hover { background: color-mix(in srgb, var(--bad) 30%, var(--glass)); border-color: var(--bad); }
+  .vol { display: flex; align-items: center; gap: 8px; }
+  .vol output { min-width: 3ch; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; }
+  .vol button { width: 42px; padding: 0; font-size: 18px; border-radius: 50%; }
+  section {
+    background: var(--glass); border: 1px solid var(--line); border-radius: var(--r); padding: 12px;
+    display: flex; flex-direction: column; gap: 9px; box-shadow: var(--shine), 0 8px 24px rgba(0,0,0,.18);
+    -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  }
+  section h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .dpad button { background: var(--glass-hi); min-height: 40px; }
+  .dpad .ok { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 100%, #fff 12%), var(--accent));
+    border-color: color-mix(in srgb, var(--accent) 80%, #fff); color: #fff; font-weight: 600; }
+  .dpad[hidden] { display: none; }
+  .sechead { display: flex; align-items: center; justify-content: space-between; }
+  .seg { display: flex; gap: 2px; background: var(--glass-in); border-radius: 9px; padding: 2px; border: 1px solid var(--line); }
+  .seg button { min-height: 26px; padding: 2px 11px; font-size: 12px; background: transparent; border-color: transparent;
+    box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 7px; }
+  .seg button[aria-selected="true"] { background: var(--glass-hi); border-color: var(--line-hi); box-shadow: var(--shine), 0 1px 4px rgba(0,0,0,.25); }
+  .pad { position: relative; height: 120px; border: 1px dashed var(--line-hi); border-radius: var(--r);
+    background: var(--glass-in); display: grid; place-items: center; text-align: center; cursor: crosshair;
+    touch-action: none; color: var(--muted); }
+  .pad[hidden] { display: none; }
+  .pad small { font-size: 11px; }
+  .pad.locked { border-style: solid; border-color: var(--accent); color: var(--text);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+  .padlock { position: absolute; right: 6px; bottom: 6px; min-height: 28px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
+  select, input[type=text] { width: 100%; background: var(--glass-in); box-shadow: inset 0 1px 2px rgba(0,0,0,.2); }
+  input[type=text] { user-select: text; cursor: text; }
+  input::placeholder { color: var(--muted); }
+  .foot { flex: none; min-height: 34px; padding: 8px 14px; display: flex; align-items: center; gap: 10px;
+    font-size: 12px; background: var(--glass); border-top: 1px solid var(--line); box-shadow: var(--shine); }
+  .ver { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; opacity: .8; }
+  #msg { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; }
+  #msg.err { color: var(--bad); }
+  button.icon { width: 36px; min-height: 36px; padding: 0; font-size: 17px; line-height: 1; background: transparent;
+    border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 50%; }
+  button.icon:hover { background: var(--glass-hi); }
+  .overlay { position: absolute; inset: 0; background: var(--overlay-bg); padding: 14px;
+    display: flex; flex-direction: column; gap: 10px; z-index: 5; overflow-y: auto;
+    -webkit-backdrop-filter: blur(40px) saturate(170%); backdrop-filter: blur(40px) saturate(170%); }
+  .overlay[hidden] { display: none; }
+  /* con una schermata aperta il resto non deve né vedersi né ricevere clic */
+  main:has(.overlay:not([hidden])) > :not(.overlay) { visibility: hidden; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
+  dt { color: var(--muted); }
+  dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; word-break: break-all; user-select: text; }
+  dd.path { font-size: 11px; color: var(--muted); }
+  dd.ok { color: var(--ok); } dd.bad { color: var(--bad); }
+  .hint { margin: 0; font-size: 11px; color: var(--muted); }
+  label.check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); margin: 0; cursor: pointer; }
+  input[type=checkbox] { min-height: 0; width: 16px; height: 16px; padding: 0; accent-color: var(--accent); }
+  .status { margin: 0; line-height: 1.45; }
+  .list { display: flex; flex-direction: column; gap: 6px; }
+  button.tv { text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  button.tv small { color: var(--muted); font-size: 11px; }
+  button.tv:hover { border-color: var(--accent); }
+  .msg { min-height: 18px; color: var(--muted); font-size: 12px; margin-top: auto; }
+  .msg.err { color: var(--bad); }
+  label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .soon { opacity: .55; }
+
+  /* ---- Rifinitura: icone vettoriali, proporzioni coerenti ---- */
+  .i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9;
+       stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  button.icon .i { width: 19px; height: 19px; }
+  .content > section { box-shadow: var(--shine); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .content .tile { flex-direction: column; display: flex; align-items: center; justify-content: center; gap: 5px;
+    min-height: 60px; padding: 6px 4px; font-size: 11.5px; font-weight: 500; border-radius: 12px; }
+  .content .tile .i { width: 21px; height: 21px; }
+  #mute .i-vol { display: none; }
+  #mute.is-muted .i-vol { display: block; }
+  #mute.is-muted .i-mute { display: none; }
+  #mute.is-muted { background: color-mix(in srgb, var(--accent) 30%, var(--glass)); border-color: var(--accent); }
+  .vol { gap: 8px; }
+  .stepper { display: flex; align-items: center; flex: none; height: 36px; background: var(--glass-in);
+    border: 1px solid var(--line); border-radius: 12px; padding: 0 2px; }
+  .content .stepper button { width: 36px; height: 30px; min-height: 0; padding: 0; background: transparent;
+    border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 9px;
+    display: grid; place-items: center; }
+  .content .stepper button:hover { background: var(--glass-hi); }
+  .stepper output { min-width: 34px; font-size: 14px; }
+  .content select { appearance: none; -webkit-appearance: none; padding-right: 30px; min-width: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8adb8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; }
+  .content .dpad { position: relative; display: block; width: 140px; height: 140px; margin: 2px auto;
+    border-radius: 50%; background: var(--glass-in); border: 1px solid var(--line);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.28), var(--shine); }
+  .content .dpad[hidden] { display: none; }
+  .content .dpad button { position: absolute; width: 44px; height: 44px; min-height: 0; padding: 0;
+    border-radius: 50%; background: transparent; border: 0; box-shadow: none; display: grid; place-items: center;
+    backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .content .dpad button:hover { background: var(--glass-hi); }
+  .dpad [data-key="UP"] { top: 5px; left: 48px; }
+  .dpad [data-key="DOWN"] { bottom: 5px; left: 48px; }
+  .dpad [data-key="LEFT"] { left: 5px; top: 48px; }
+  .dpad [data-key="RIGHT"] { right: 5px; top: 48px; }
+  .content .dpad .ok { left: 43px; top: 43px; width: 52px; height: 52px; font-weight: 600; font-size: 13px; color: #fff;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 100%, #fff 14%), var(--accent));
+    box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 45%, transparent), var(--shine); }
+  .content .dpad .ok:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
+  .content .pad { height: 144px; }
+  .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .content .keys button { min-height: 32px; padding: 4px; display: grid; place-items: center; }
+  .actions { flex: none; }
+  .content .actions button { display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 12.5px; }
+  .content section h2 { font-size: 10.5px; }
+
+  /* ---- Palette scura sobria (come la prima versione), vetro solo come sfocatura dello sfondo ---- */
+  :root {
+    --glass: rgba(29,32,39,.88); --glass-hi: rgba(39,43,52,.94); --glass-in: rgba(20,22,27,.72);
+    --line: #2f343e; --line-hi: #454c5a;
+    --text: #e8eaee; --muted: #8b93a1;
+    --accent: #4f9dff; --accent-2: #4f9dff; --ok: #3ecf8e; --bad: #ff6b6b;
+    --shine: inset 0 1px 0 rgba(255,255,255,.04);
+    --tint: rgba(20,22,27,.45); --overlay-bg: rgba(20,22,27,.97);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --glass: rgba(255,255,255,.88); --glass-hi: rgba(233,236,242,.95); --glass-in: rgba(233,236,242,.7);
+      --line: #d9dde6; --line-hi: #b9c0cd;
+      --text: #1a1d24; --muted: #667085;
+      --shine: inset 0 1px 0 rgba(255,255,255,.8);
+      --tint: rgba(243,244,247,.5); --overlay-bg: rgba(243,244,247,.97);
+    }
+  }
+  section { box-shadow: none; }
+  .primary, .content .dpad .ok { background: var(--accent); border-color: var(--accent); box-shadow: none; }
+  .primary:hover, .content .dpad .ok:hover { background: color-mix(in srgb, var(--accent) 85%, #000); }
+  .dot.on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+  .dot.off { box-shadow: none; }
+  #mute.is-muted { background: color-mix(in srgb, var(--accent) 22%, var(--glass)); }
+
+  /* ---- Schermate Impostazioni e Ricerca TV: stessa struttura del pannello (barra, corpo, barra) ---- */
+  .overlay { padding: 0; gap: 10px; }
+  .overlay > header { padding: 8px 10px 8px 10px; background: var(--glass); border-bottom: 1px solid var(--line);
+    box-shadow: var(--shine); flex: none; }
+  .overlay > header h1 { font-size: 14px; }
+  .overlay > :not(header):not(.msg) { margin: 0 14px; flex: none; }
+  .overlay > section { padding: 10px; gap: 7px; }
+  .overlay button, .overlay select, .overlay input[type=text] { min-height: 34px; padding: 6px 10px; }
+  .overlay button.icon { min-height: 36px; padding: 0; }
+  .overlay > .msg { flex: none; margin: auto 0 0; min-height: 34px; padding: 8px 14px; display: flex; align-items: center;
+    background: var(--glass); border-top: 1px solid var(--line); box-shadow: var(--shine); }
+  .overlay > .foot.foot { margin: auto 0 0; }
+  .foot .msg { margin: 0; padding: 0; min-height: 0; display: block; flex: 1; min-width: 0; background: none;
+    border: 0; box-shadow: none; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span id="dot" class="dot" aria-hidden="true"></span>
+    <h1 id="title">TV LG</h1>
+    <span id="sub" class="sub">in attesa…</span>
+    <button id="gear" class="icon" aria-label="Impostazioni" title="Impostazioni"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg></button>
+  </header>
+
+  <div class="content">
+  <section>
+    <div class="tiles">
+      <button id="power" class="tile danger" title="Spegni la TV"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v9"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg><span>Spegni</span></button>
+      <button id="wake" class="tile" title="Accendi con Wake-on-LAN"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Accendi</span></button>
+      <button id="mute" class="tile"><svg class="i i-mute" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6M16 9l6 6"/></svg><svg class="i i-vol" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg><span class="lbl">Muto</span></button>
+    </div>
+    <div class="vol">
+      <div class="stepper">
+        <button id="vdown" aria-label="Volume giù"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+        <output id="volume">–</output>
+        <button id="vup" aria-label="Volume su"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <select id="inputs" class="grow" aria-label="Ingresso"><option value="">Ingresso…</option></select>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead">
+      <h2>Telecomando</h2>
+      <div class="seg" role="tablist" aria-label="Modalità telecomando">
+        <button id="m-keys" role="tab" aria-selected="true">Tasti</button>
+        <button id="m-pad" role="tab" aria-selected="false">Mouse</button>
+      </div>
+    </div>
+    <div class="dpad" id="dpad">
+      <button data-key="UP" aria-label="Su"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+      <button data-key="LEFT" aria-label="Sinistra"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+      <button data-key="ENTER" class="ok">OK</button>
+      <button data-key="RIGHT" aria-label="Destra"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button data-key="DOWN" aria-label="Giù"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div id="pad" class="pad" hidden tabindex="0" aria-label="Trackpad per il puntatore della TV">
+      <span id="padtext">Muovi qui il mouse<br><small>clic = clic · rotella = scorrimento · tasto destro = indietro</small></span>
+      <button id="padlock" class="padlock" title="Blocca il cursore nel riquadro per movimenti illimitati (Esc per uscire)">⌖ Blocca</button>
+    </div>
+    <div class="keys">
+      <button data-key="MENU" aria-label="Menu" title="Menu"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <button data-key="HOME" aria-label="Home" title="Home"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg></button>
+      <button data-key="BACK" aria-label="Indietro" title="Indietro"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+      <button data-key="EXIT" aria-label="Esci" title="Esci"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <select id="apps" aria-label="App"><option value="">Avvia app…</option></select>
+  </section>
+
+  <section>
+    <h2>Testo</h2>
+    <input id="kbd" type="text" autocomplete="off" spellcheck="false"
+           placeholder="Scrivi qui per scrivere sulla TV" title="Seleziona un campo sulla TV, poi scrivi. Invio, ⌫ e frecce vengono inoltrati."
+           aria-label="Tastiera PC verso la TV">
+    <div class="row">
+      <input id="toast" type="text" placeholder="Messaggio a schermo" maxlength="120" aria-label="Messaggio a schermo">
+      <button id="send" class="primary">Invia</button>
+    </div>
+  </section>
+
+  <div class="row actions">
+    <button id="shot" class="grow" title="Salva lo schermo della TV in Immagini\TV Screenshots"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg><span>Screenshot</span></button>
+    <button id="sendfile" class="grow" title="Mostra un'immagine del PC sulla TV (JPG o PNG, ridotta a 1920×1080)"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg><span>Invia immagine</span></button>
+  </div>
+  </div>
+
+  <footer class="foot"><div id="msg" role="status"></div><span class="ver" title="Versione di TV Tray">v 0.2.1</span></footer>
+
+  <div id="finder" class="overlay" hidden>
+    <header>
+      <h1>Ricerca TV</h1>
+      <button id="fclose" class="icon" aria-label="Chiudi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </header>
+    <section>
+      <p id="fstatus" class="status">Scansione della rete in corso…</p>
+      <div id="flist" class="list"></div>
+    </section>
+    <div class="row">
+      <button id="fagain" class="grow">Cerca di nuovo</button>
+      <button id="fmanual" class="grow">Inserisci IP</button>
+    </div>
+    <footer class="foot"><div id="msg3" class="msg"></div><span class="ver" title="Versione di TV Tray">v 0.2.1</span></footer>
+  </div>
+
+  <div id="settings" class="overlay" hidden>
+    <header>
+      <button id="back" class="icon" aria-label="Torna ai comandi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+      <h1>Impostazioni</h1>
+    </header>
+
+    <section>
+      <h2>Salvate</h2>
+      <dl>
+        <dt>Indirizzo IP</dt><dd id="v-ip">–</dd>
+        <dt>MAC</dt><dd id="v-mac">–</dd>
+        <dt>Pairing</dt><dd id="v-paired">–</dd>
+        <dt>File</dt><dd id="v-file" class="path">–</dd>
+      </dl>
+    </section>
+
+    <section>
+      <h2>Modifica</h2>
+      <div class="row">
+        <div class="grow"><label for="ip">Indirizzo IP</label><input id="ip" type="text" inputmode="decimal"></div>
+        <div class="grow"><label for="mac">MAC</label><input id="mac" type="text" placeholder="aa:bb:cc:dd:ee:ff"></div>
+      </div>
+      <div class="row">
+        <button id="save" class="grow">Salva</button>
+        <button id="pair" class="primary grow">Collega TV</button>
+      </div>
+      <button id="rescan" class="grow">Cerca TV sulla rete</button>
+      <p class="hint">Il MAC si aggiorna da solo a ogni spegnimento dal pannello.</p>
+    </section>
+
+    <section>
+      <h2>Avvio</h2>
+      <label class="check"><input type="checkbox" id="autostart"> Avvia con Windows</label>
+    </section>
+
+    <section>
+      <h2>Collegamento</h2>
+      <button id="unlink" class="danger">Scollega da questa TV</button>
+      <p class="hint">Dimentica IP, MAC e pairing. Sulla TV la voce dell'app resta nell'elenco dispositivi.</p>
+    </section>
+    <footer class="foot"><div id="msg2" role="status" class="msg"></div><span class="ver" title="Versione di TV Tray">v 0.2.1</span></footer>
+  </div>
+</main>
+
+<script>
+// Fuori da Tauri (anteprima nel browser) i comandi falliscono con un messaggio chiaro.
+const invoke = window.__TAURI__?.core?.invoke ?? (async () => { throw new Error('non in esecuzione dentro Tauri'); });
+const $ = (id) => document.getElementById(id);
+let muted = false;
+
+function say(text, isErr = false) {
+  for (const id of ['msg', 'msg2', 'msg3']) {
+    const m = $(id); m.textContent = text;
+    m.className = (id === 'msg' ? '' : 'msg ') + (isErr ? 'err' : '');
+    if (text && !isErr) setTimeout(() => { if (m.textContent === text) m.textContent = ''; }, 3500);
+  }
+}
+
+function renderSettings(cfg) {
+  $('v-ip').textContent = cfg.ip || '–';
+  $('v-mac').textContent = cfg.mac || (cfg.ip ? 'non ancora rilevato' : '–');
+  const p = $('v-paired');
+  p.textContent = cfg.paired ? 'collegata' : 'non collegata';
+  p.className = cfg.paired ? 'ok' : 'bad';
+  $('v-file').textContent = cfg.file;
+  $('ip').value = cfg.ip;
+  $('mac').value = cfg.mac || '';
+  $('title').textContent = cfg.ip ? 'TV LG · ' + cfg.ip : 'TV LG';
+  $('unlink').disabled = !cfg.ip && !cfg.paired;
+  hasTv = !!cfg.ip && cfg.paired;
+}
+const openSettings = async () => {
+  try { renderSettings(await invoke('get_config')); } catch (e) { say(String(e), true); }
+  try { $('autostart').checked = await invoke('get_autostart'); } catch (_) { $('autostart').disabled = true; }
+  $('settings').hidden = false;
+};
+$('autostart').addEventListener('change', async (e) => {
+  try {
+    e.target.checked = await invoke('set_autostart', { enabled: e.target.checked });
+    say(e.target.checked ? 'Si avvierà con Windows' : 'Avvio automatico disattivato');
+  } catch (err) {
+    e.target.checked = !e.target.checked;
+    say('Avvio automatico non modificato: ' + err, true);
+  }
+});
+const closeSettings = () => { $('settings').hidden = true; };
+const tv = (uri, payload) => invoke('tv_request', { uri, payload: payload ?? {} });
+const run = async (fn) => { try { await fn(); } catch (e) { say(String(e), true); setState(false); } };
+
+function setState(on, detail) {
+  if (on === null) {   // nessuna TV collegata
+    $('dot').className = 'dot';
+    $('sub').textContent = 'non collegata';
+    return;
+  }
+  $('dot').className = 'dot ' + (on ? 'on' : 'off');
+  $('sub').textContent = on ? (detail || 'connessa') : 'non raggiungibile';
+}
+
+let hasTv = false;   // vero se c'è una TV configurata e collegata
+
+async function refresh() {
+  if (!hasTv) { setState(null); return; }
+  const r = await tv('ssap://audio/getVolume');
+  const v = r.volumeStatus || r;
+  $('volume').textContent = v.volume ?? '–';
+  if ($('apps').length <= 1) loadLists();   // elenchi persi se la TV non rispondeva all'avvio
+  muted = !!(v.muteStatus ?? v.mute);
+  $('mute').classList.toggle('is-muted', muted);
+  $('mute').querySelector('.lbl').textContent = muted ? 'Audio' : 'Muto';
+  setState(true);
+}
+
+async function loadLists() {
+  try {
+    const i = await tv('ssap://tv/getExternalInputList');
+    const sel = $('inputs'); sel.length = 1;
+    (i.devices || []).forEach(d => sel.add(new Option(d.label + (d.connected ? ' •' : ''), d.id)));
+  } catch (_) {}
+  try {
+    const a = await tv('ssap://com.webos.applicationManager/listLaunchPoints');
+    const sel = $('apps'); sel.length = 1;
+    (a.launchPoints || []).sort((x, y) => x.title.localeCompare(y.title))
+      .forEach(p => sel.add(new Option(p.title, p.id)));
+  } catch (e) { say('Elenco app non disponibile: ' + e, true); }
+}
+
+// Ricerca automatica delle TV LG sulla rete e collegamento.
+async function discover(auto) {
+  $('settings').hidden = true;
+  $('finder').hidden = false;
+  $('flist').textContent = '';
+  $('fstatus').textContent = 'Scansione della rete in corso…';
+  $('fagain').disabled = true;
+  let found = [];
+  try { found = await invoke('discover_tvs'); } catch (e) { say(String(e), true); }
+  $('fagain').disabled = false;
+
+  if (!found.length) {
+    $('fstatus').textContent = 'Nessuna TV LG trovata. Controlla che sia accesa e sulla stessa rete, poi riprova oppure inserisci l’IP a mano.';
+    return;
+  }
+  if (found.length === 1 && auto) return connectTo(found[0]);
+
+  $('fstatus').textContent = found.length === 1 ? 'Trovata una TV:' : `Trovate ${found.length} TV, scegli quella da collegare:`;
+  for (const f of found) {
+    const b = document.createElement('button');
+    b.className = 'tv';
+    const t = document.createElement('span'); t.textContent = f.name || 'TV LG webOS';
+    const s = document.createElement('small');
+    const also = f.also.length ? 'anche ' + f.also.join(', ') : null;
+    s.textContent = [f.ip, also, f.model].filter(Boolean).join(' · ') + (f.via === 'ssdp' ? '' : ' · da verificare');
+    b.append(t, s);
+    b.onclick = () => connectTo(f);
+    $('flist').append(b);
+  }
+}
+
+async function connectTo(f) {
+  $('flist').textContent = '';
+  $('fstatus').textContent = `Collego ${f.name || f.ip}… accetta il prompt sulla TV con il telecomando.`;
+  try {
+    await invoke('save_config', { ip: f.ip, mac: null });
+    renderSettings(await invoke('pair'));
+    $('finder').hidden = true;
+    await refresh(); await loadLists();
+    say('TV collegata');
+  } catch (e) {
+    $('fstatus').textContent = 'Collegamento non riuscito: ' + e;
+    setState(false);
+  }
+}
+
+async function init() {
+  const cfg = await invoke('get_config');
+  renderSettings(cfg);
+  if (!cfg.paired) { await discover(true); return; }
+  await run(async () => { await refresh(); await loadLists(); });
+}
+
+$('vup').onclick = () => run(async () => { await tv('ssap://audio/volumeUp'); await refresh(); });
+$('vdown').onclick = () => run(async () => { await tv('ssap://audio/volumeDown'); await refresh(); });
+$('mute').onclick = () => run(async () => { await tv('ssap://audio/setMute', { mute: !muted }); await refresh(); });
+$('power').onclick = () => run(async () => {
+  const r = await invoke('power_off');   // rileva e salva il MAC, poi spegne
+  renderSettings(await invoke('get_config'));
+  setState(false);
+  if (r.warning) say(r.warning, true);
+  else say('TV in spegnimento · MAC ' + r.mac + ' salvato per la riaccensione');
+});
+$('shot').addEventListener('click', () => run(async () => {
+  say('Cattura in corso…');
+  const path = await invoke('screenshot');
+  say('Screenshot salvato: ' + path.split('\\').pop());
+  await invoke('reveal_file', { path });
+}));
+$('sendfile').addEventListener('click', () => run(async () => {
+  const name = await invoke('send_file');
+  if (name) say('Aperto sulla TV: ' + name);
+}));
+$('wake').onclick = async () => {
+  const cfg = await invoke('get_config');
+  if (!cfg.mac) { say('MAC non ancora noto: viene rilevato alla prima volta che spegni la TV da qui.', true); return; }
+  run(async () => { await invoke('wake'); say('Pacchetto di accensione inviato a ' + cfg.mac); });
+};
+$('inputs').addEventListener('change', (e) => {
+  if (e.target.value) run(() => tv('ssap://tv/switchInput', { inputId: e.target.value }));
+});
+$('apps').addEventListener('change', (e) => {
+  if (e.target.value) run(() => tv('ssap://system.launcher/launch', { id: e.target.value }));
+});
+document.querySelectorAll('[data-key]').forEach(b =>
+  b.onclick = () => run(() => invoke('tv_button', { name: b.dataset.key })));
+
+const sendToast = () => {
+  const t = $('toast').value.trim(); if (!t) return;
+  run(async () => { await tv('ssap://system.notifications/createToast', { message: t }); $('toast').value = ''; say('Messaggio inviato'); });
+};
+$('send').onclick = sendToast;
+// Attenzione: un gestore onkeydown che restituisce `false` annulla l'inserimento del
+// carattere. Per questo niente `&&` e nessun valore di ritorno.
+$('toast').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendToast();
+});
+
+// Scollegamento in due passaggi: il primo click chiede conferma, il secondo esegue.
+let unlinkTimer = null;
+const unlinkLabel = 'Scollega da questa TV';
+$('unlink').onclick = () => {
+  const b = $('unlink');
+  if (!unlinkTimer) {
+    b.textContent = 'Conferma: scollega';
+    unlinkTimer = setTimeout(() => { unlinkTimer = null; b.textContent = unlinkLabel; }, 4000);
+    return;
+  }
+  clearTimeout(unlinkTimer); unlinkTimer = null; b.textContent = unlinkLabel;
+  run(async () => {
+    renderSettings(await invoke('unpair'));
+    for (const id of ['volume']) $(id).textContent = '–';
+    $('inputs').length = 1; $('apps').length = 1;
+    setState(null);
+    $('settings').hidden = true;
+    $('finder').hidden = false;
+    $('flist').textContent = '';
+    $('fstatus').textContent = 'TV scollegata. Premi «Cerca di nuovo» per trovarne una sulla rete.';
+    say('');
+  });
+};
+$('rescan').onclick = () => discover(false);
+$('fagain').onclick = () => discover(false);
+$('fclose').onclick = () => { $('finder').hidden = true; };
+$('fmanual').onclick = () => { $('finder').hidden = true; openSettings(); };
+// Tastiera del PC → campo di testo attivo sulla TV.
+// Il campo resta sempre vuoto: ciò che si digita viene inviato e subito cancellato.
+const kbd = $('kbd');
+let kbdQueue = Promise.resolve();   // mantiene l'ordine dei caratteri
+const kbdSend = (fn) => {
+  kbdQueue = kbdQueue.then(fn).catch((e) =>
+    say('La TV non ha accettato il testo (nessun campo attivo?): ' + e, true));
+};
+const kbdFlush = () => {
+  const text = kbd.value; kbd.value = '';
+  if (text) kbdSend(() => tv('ssap://com.webos.service.ime/insertText', { text, replace: 0 }));
+};
+kbd.addEventListener('input', (e) => { if (!e.isComposing) kbdFlush(); });
+kbd.addEventListener('compositionend', kbdFlush);   // accenti e tasti morti
+kbd.addEventListener('keydown', (e) => {
+  if (e.isComposing) return;
+  const keys = { ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT' };
+  if (e.key === 'Backspace' && !kbd.value) {
+    e.preventDefault();
+    kbdSend(() => tv('ssap://com.webos.service.ime/deleteCharacters', { count: 1 }));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    kbdSend(() => tv('ssap://com.webos.service.ime/sendEnterKey'));
+  } else if (keys[e.key]) {
+    e.preventDefault();
+    kbdSend(() => invoke('tv_button', { name: keys[e.key] }));
+  } else if (e.key === 'Escape') {
+    kbd.blur();
+  }
+});
+
+// Trackpad del PC → puntatore della TV (Magic Remote).
+const pad = $('pad');
+const SENS = 1.8;                       // moltiplicatore dei movimenti
+let accX = 0, accY = 0, padTimer = null, padWarned = false;
+const padErr = (e) => { if (!padWarned) { padWarned = true; say(String(e), true); } };
+
+function setMode(mode) {
+  const padMode = mode === 'pad';
+  $('dpad').hidden = padMode; pad.hidden = !padMode;
+  $('m-keys').setAttribute('aria-selected', String(!padMode));
+  $('m-pad').setAttribute('aria-selected', String(padMode));
+  if (!padMode && document.pointerLockElement) document.exitPointerLock();
+  padWarned = false;
+}
+$('m-keys').onclick = () => setMode('keys');
+$('m-pad').onclick = () => setMode('pad');
+
+function flushPad() {
+  padTimer = null;
+  const dx = Math.round(accX), dy = Math.round(accY);
+  accX -= dx; accY -= dy;
+  if (dx || dy) invoke('tv_pointer', { kind: 'move', dx, dy }).catch(padErr);
+}
+pad.addEventListener('pointermove', (e) => {
+  accX += e.movementX * SENS; accY += e.movementY * SENS;
+  if (!padTimer) padTimer = setTimeout(flushPad, 16);   // circa 60 invii al secondo
+});
+pad.addEventListener('click', (e) => {
+  if (e.target.id === 'padlock') return;
+  invoke('tv_pointer', { kind: 'click' }).catch(padErr);
+});
+pad.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  invoke('tv_button', { name: 'BACK' }).catch(padErr);
+});
+pad.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const dy = Math.max(-100, Math.min(100, Math.round(-e.deltaY / 4)));
+  if (dy) invoke('tv_pointer', { kind: 'scroll', dy }).catch(padErr);
+}, { passive: false });
+$('padlock').onclick = (e) => { e.stopPropagation(); pad.requestPointerLock?.(); };
+const padLocked = () => document.pointerLockElement === pad;
+document.addEventListener('pointerlockchange', () => {
+  const on = padLocked();
+  pad.classList.toggle('locked', on);
+  $('padtext').firstChild.textContent = on ? 'Bloccato: la tastiera scrive sulla TV' : 'Muovi qui il mouse';
+  $('padtext').querySelector('small').textContent = on
+    ? 'clic = clic · tasto destro = indietro · Esc per uscire'
+    : 'clic = clic · rotella = scorrimento · tasto destro = indietro';
+});
+
+// A cursore bloccato ogni tasto va direttamente al campo di testo attivo sulla TV,
+// senza dover cliccare sulla casella «Tastiera PC».
+document.addEventListener('keydown', (e) => {
+  if (!padLocked() || e.isComposing) return;
+  const keys = { ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT' };
+  if (e.key === 'Backspace') {
+    kbdSend(() => tv('ssap://com.webos.service.ime/deleteCharacters', { count: 1 }));
+  } else if (e.key === 'Enter') {
+    kbdSend(() => tv('ssap://com.webos.service.ime/sendEnterKey'));
+  } else if (keys[e.key]) {
+    kbdSend(() => invoke('tv_button', { name: keys[e.key] }));
+  } else if (e.key.length === 1 && !e.metaKey && !(e.ctrlKey && !e.altKey)) {
+    // un carattere stampabile (AltGr arriva come Ctrl+Alt: va accettato)
+    const text = e.key;
+    kbdSend(() => tv('ssap://com.webos.service.ime/insertText', { text, replace: 0 }));
+  } else {
+    return;   // tasti di servizio (Maiusc, F-tasti, scorciatoie): non si inoltrano
+  }
+  e.preventDefault();
+});
+document.addEventListener('paste', (e) => {
+  if (!padLocked()) return;
+  const text = e.clipboardData?.getData('text');
+  if (text) kbdSend(() => tv('ssap://com.webos.service.ime/insertText', { text, replace: 0 }));
+  e.preventDefault();
+});
+
+$('gear').onclick = openSettings;
+$('back').onclick = closeSettings;
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('settings').hidden) closeSettings(); });
+
+$('save').onclick = () => run(async () => {
+  renderSettings(await invoke('save_config', { ip: $('ip').value, mac: $('mac').value || null }));
+  say('Impostazioni salvate');
+});
+$('pair').onclick = () => run(async () => {
+  say('Accetta il prompt sulla TV con il telecomando…');
+  await invoke('save_config', { ip: $('ip').value, mac: $('mac').value || null });
+  renderSettings(await invoke('pair'));
+  await refresh(); await loadLists(); say('TV collegata');
+});
+
+window.addEventListener('focus', () => {
+  run(refresh);
+  // Appena il pannello si apre si può già scrivere sulla TV.
+  if ($('settings').hidden && $('finder').hidden && hasTv) kbd.focus();
+});
+window.__TAURI__?.app?.getVersion?.().then(v => { document.querySelectorAll('.ver').forEach(e => { e.textContent = 'v ' + v; }); }).catch(() => {});
+init();
+</script>
+</body>
+</html>
