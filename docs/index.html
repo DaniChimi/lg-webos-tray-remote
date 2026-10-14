@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TV Tray</title>
+<meta name="description" content="TV Tray is a free Windows system tray app that works as an LG TV remote control: remote, volume, inputs, apps, Wake-on-LAN, screenshots and image sending. No LG account needed.">
+<meta property="og:title" content="TV Tray: LG webOS TV remote for the Windows system tray">
+<meta property="og:description" content="A free Windows app that lives in the system tray and controls your LG webOS TV on the local network.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://danichimi.github.io/lg-webos-tray-remote/img/panel-en.png">
+<link rel="icon" type="image/png" href="img/icon.png">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #14161d; --bg-2: #1b1e28; --card: #20232f; --line: #2f3342; --text: #f2f4f8; --muted: #a2a8b8;
+    --accent: #4a9eff; --accent-2: #6d7dff; --ok: #35d07f;
+    --r: 14px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --bg: #f5f6fa; --bg-2: #ffffff; --card: #ffffff; --line: #dfe2ec; --text: #1a1c24; --muted: #5b6173;
+      --accent: #1f74e0; --accent-2: #4a55d9;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  header.top .wrap { display: flex; align-items: center; gap: 14px; height: 58px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; text-decoration: none; color: var(--text); }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; }
+  header.top nav { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 14px; }
+  header.top nav a { color: var(--muted); text-decoration: none; }
+  header.top nav a:hover { color: var(--text); }
+  .lang { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .lang button { background: transparent; border: 0; color: var(--muted); padding: 5px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .lang button[aria-pressed="true"] { background: var(--card); color: var(--text); }
+  .hero { position: relative; overflow: hidden; padding: 72px 0 40px; text-align: center; }
+  .hero::before { content: ""; position: absolute; left: 0; right: 0; top: -160px; height: 560px; pointer-events: none;
+    background: radial-gradient(640px 320px at 50% 42%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 72%); }
+  .hero > .wrap { position: relative; }
+  .pill { display: inline-block; margin-bottom: 22px; padding: 5px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+  .hero img.logo { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .hero h1 { font-size: clamp(32px, 6vw, 54px); line-height: 1.08; margin: 20px auto 14px; max-width: 820px; letter-spacing: -.025em;
+    background: linear-gradient(180deg, var(--text), color-mix(in srgb, var(--text) 62%, var(--accent)));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p.lead { max-width: 640px; margin: 0 auto; font-size: 19px; color: var(--muted); }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 28px 0 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 9px; padding: 13px 22px; border-radius: 12px; font-weight: 600;
+    text-decoration: none; border: 1px solid var(--line); color: var(--text); background: var(--card); }
+  .btn.primary { background: linear-gradient(180deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .btn:hover { filter: brightness(1.08); }
+  .meta { font-size: 13px; color: var(--muted); text-align: center; }
+  .demo { margin: 34px auto 10px; max-width: 880px; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line);
+    box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+  .demo img { display: block; width: 100%; height: auto; }
+  section { padding: 72px 0 6px; }
+  section > .wrap > h2 { font-size: clamp(24px, 4vw, 32px); margin: 0 0 10px; letter-spacing: -.02em; text-align: center; }
+  section > .wrap > p.sub { color: var(--muted); margin: 0 auto 34px; max-width: 640px; text-align: center; }
+  .grid, .steps, .shots { display: grid; gap: 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .shots { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .card { display: flex; flex-direction: column; gap: 8px; padding: 22px; border-radius: 18px; border: 1px solid var(--line);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--card) 100%, #fff 3%), var(--card));
+    transition: transform .15s ease, border-color .15s ease; }
+  .card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .card h3 { margin: 6px 0 0; font-size: 17px; letter-spacing: -.01em; }
+  .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent); }
+  .ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .steps { counter-reset: s; }
+  .steps .card::before { counter-increment: s; content: counter(s); width: 34px; height: 34px; border-radius: 50%; margin-bottom: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-weight: 700; display: grid; place-items: center; }
+  .shots figure { margin: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .shots img { width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 14px 34px rgba(0,0,0,.28); }
+  .shots figcaption { margin-top: 14px; font-size: 14px; color: var(--muted); }
+  .shots figcaption b { display: block; color: var(--text); font-size: 15px; margin-bottom: 2px; }
+  @media (max-width: 900px) { .grid, .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .shots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { .grid, .steps { grid-template-columns: minmax(0, 1fr); } .shots { gap: 14px; } }
+  .faq { max-width: 760px; margin: 0 auto; }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; }
+  details[open] { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+  summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--accent); font-size: 20px; line-height: 1; }
+  details[open] summary::after { content: "\2212"; }
+  details p { color: var(--muted); margin: 12px 0 0; }
+  code { background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: .9em; word-break: break-all; }
+  footer { margin-top: 60px; padding: 30px 0 46px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  footer .links { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; }
+  @media (max-width: 560px) { header.top nav a.hide-s { display: none; } .hero { padding-top: 40px; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="img/icon.png" alt=""><span>TV Tray</span></a>
+    <nav>
+      <a class="hide-s" href="#features" data-i18n="nav_features">Features</a>
+      <a class="hide-s" href="#install" data-i18n="nav_install">Install</a>
+      <a href="https://github.com/DaniChimi/lg-webos-tray-remote" target="_blank" rel="noopener">GitHub</a>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="it" aria-pressed="false">IT</button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="hero">
+    <div class="wrap">
+      <span class="pill" data-i18n="pill">Free · Open source · Windows 10 &amp; 11</span><br>
+      <img class="logo" src="img/icon.png" alt="TV Tray icon">
+      <h1 data-i18n="h1">LG TV remote for the Windows system tray</h1>
+      <p class="lead" data-i18n="lead">A small free app that sits next to the clock and controls your LG webOS TV over your home network. No LG account, no Developer Mode, nothing to install on the TV.</p>
+      <div class="cta">
+        <a id="dl" class="btn primary" href="https://github.com/DaniChimi/lg-webos-tray-remote/releases/latest">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
+          <span id="dl-text" data-i18n="download">Download for Windows</span>
+        </a>
+        <a class="btn" href="https://github.com/DaniChimi/lg-webos-tray-remote" target="_blank" rel="noopener" data-i18n="source">View the source</a>
+      </div>
+      <div class="meta" id="dl-meta" data-i18n="meta_default">Windows 10 and 11 · free and open source (MIT)</div>
+      <div class="demo"><img id="demo" src="img/demo-en.gif" alt="Animated demo of TV Tray: pairing with the TV and switching between Keys, Mouse, Numbers and Settings" width="1600" height="1248"></div>
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2 data-i18n="f_title">Everything you reach for the remote for</h2>
+      <p class="sub" data-i18n="f_sub">One click on the tray icon opens a compact panel. It works over the TV's local control protocol, so it is fast and nothing leaves your network.</p>
+      <div class="grid">
+        <div class="card"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></span><h3 data-i18n="f1_t">Power and Wake-on-LAN</h3><p data-i18n="f1_p">Turn the TV off and back on from the PC. The MAC address is detected for you.</p></div>
+        <div class="card"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></span><h3 data-i18n="f2_t">Volume, inputs, apps</h3><p data-i18n="f2_p">Volume and mute, switch HDMI inputs and launch installed apps from a list.</p></div>
+        <div class="card"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="3"/><circle cx="12" cy="8" r="1.5"/><path d="M10 14h4M10 18h4"/></svg></span><h3 data-i18n="f3_t">Keys, mouse and number pad</h3><p data-i18n="f3_p">Directional pad, a trackpad for the TV pointer, and digits to pick a channel by number.</p></div>
+        <div class="card"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></span><h3 data-i18n="f4_t">Type with your keyboard</h3><p data-i18n="f4_p">Type into search boxes and login fields on the TV with the PC keyboard, paste included.</p></div>
+        <div class="card"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><h3 data-i18n="f5_t">Screenshot and images</h3><p data-i18n="f5_p">Save what the TV shows to a file, or send a photo from the PC to the TV's screen.</p></div>
+        <div class="card"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><h3 data-i18n="f6_t">On-screen messages</h3><p data-i18n="f6_p">Pop a short notification onto the TV, handy for a quick note to the room.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens">
+    <div class="wrap">
+      <h2 data-i18n="s_title">A look at the panel</h2>
+      <p class="sub" data-i18n="s_sub">Dark, compact and fixed-size. The IP and MAC addresses in these pictures are placeholders.</p>
+      <div class="shots">
+        <figure><img data-shot="panel" src="img/panel-en.png" alt="Keys mode" loading="lazy"><figcaption><b data-i18n="sc1_t">Keys</b><span data-i18n="sc1_p">Directional pad, volume, inputs and apps.</span></figcaption></figure>
+        <figure><img data-shot="mouse" src="img/mouse-en.png" alt="Mouse mode" loading="lazy"><figcaption><b data-i18n="sc2_t">Mouse</b><span data-i18n="sc2_p">Click the area to lock the cursor and use it as a trackpad.</span></figcaption></figure>
+        <figure><img data-shot="numbers" src="img/numbers-en.png" alt="Number pad" loading="lazy"><figcaption><b data-i18n="sc3_t">Numbers</b><span data-i18n="sc3_p">Digits, channel up and down, list and OK.</span></figcaption></figure>
+        <figure><img data-shot="settings" src="img/settings-en.png" alt="Settings" loading="lazy"><figcaption><b data-i18n="sc4_t">Settings</b><span data-i18n="sc4_p">TV address, language, start with Windows, pairing.</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2 data-i18n="i_title">Install in three steps</h2>
+      <p class="sub" data-i18n="i_sub">The TV and the PC must be on the same network, and the TV switched on.</p>
+      <div class="steps">
+        <div class="card"><h3 data-i18n="i1_t">Download and run</h3><p data-i18n="i1_p">Get the installer and run it. It installs for your user only, so no administrator rights are needed.</p></div>
+        <div class="card"><h3 data-i18n="i2_t">Pick your TV</h3><p data-i18n="i2_p">TV Tray scans the network and lists the TVs it finds. Click yours: the TV shows a pairing request.</p></div>
+        <div class="card"><h3 data-i18n="i3_t">Accept on the TV</h3><p data-i18n="i3_p">Accept the request with the remote. From then on, one click on the tray icon opens the panel.</p></div>
+      </div>
+      <h2 style="margin-top:64px" data-i18n="q_title">Good to know</h2>
+      <div class="faq">
+      <details>
+        <summary data-i18n="q1_q">Windows shows a SmartScreen warning</summary>
+        <p data-i18n="q1_a">The installer is not code-signed yet, so Windows warns about an unknown publisher. Choose “More info”, then “Run anyway”. You can check the download against the SHA-256 shown below.</p>
+      </details>
+      <details>
+        <summary data-i18n="q2_q">Is it safe? What does it store?</summary>
+        <p data-i18n="q2_a">The app talks only to your TV on the local network. The pairing key is encrypted with Windows data protection and valid only for your user; no key is in the code. It is open source, so you can read exactly what it does.</p>
+      </details>
+      <details>
+        <summary data-i18n="q3_q">Which TVs are supported?</summary>
+        <p data-i18n="q3_a">LG TVs running webOS. It has been tested on a webOS 25 TV; other models and versions are not verified.</p>
+      </details>
+      <details>
+        <summary data-i18n="q4_q">My TV is not found</summary>
+        <p data-i18n="q4_a">Make sure the TV is on and on the same network, then use “Search again”. You can also enter its IP address by hand in Settings.</p>
+      </details>
+      <p class="meta" id="sha" hidden></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="https://github.com/DaniChimi/lg-webos-tray-remote" target="_blank" rel="noopener" data-i18n="ft_source">Source code</a>
+      <a href="https://github.com/DaniChimi/lg-webos-tray-remote/releases" target="_blank" rel="noopener" data-i18n="ft_releases">All releases</a>
+      <a href="https://github.com/DaniChimi/lg-webos-tray-remote/issues" target="_blank" rel="noopener" data-i18n="ft_issues">Report a problem</a>
+      <a href="https://github.com/DaniChimi/lg-webos-tray-remote/blob/main/LICENSE" target="_blank" rel="noopener" data-i18n="ft_license">MIT licence</a>
+    </div>
+    <p data-i18n="ft_legal">Provided as is, without warranty. Use it only with devices you own. This site sets no cookies and has no analytics; your browser contacts GitHub, which hosts the page and the downloads.</p>
+    <div data-i18n="ft_note">TV Tray is not affiliated with LG Electronics. “LG” and “webOS” are trademarks of their respective owners.</div>
+  </div>
+</footer>
+
+<script>
+const REPO = 'DaniChimi/lg-webos-tray-remote';
+const DICT = {
+  en: {
+    nav_features: 'Features', nav_install: 'Install', pill: 'Free · Open source · Windows 10 & 11',
+    h1: 'LG TV remote for the Windows system tray',
+    lead: 'A small free app that sits next to the clock and controls your LG webOS TV over your home network. No LG account, no Developer Mode, nothing to install on the TV.',
+    download: 'Download for Windows', source: 'View the source',
+    meta_default: 'Windows 10 and 11 · free and open source (MIT)',
+    meta_version: 'Version {v} · {size} MB · Windows 10 and 11 · free and open source (MIT)',
+    f_title: 'Everything you reach for the remote for',
+    f_sub: "One click on the tray icon opens a compact panel. It works over the TV's local control protocol, so it is fast and nothing leaves your network.",
+    f1_t: 'Power and Wake-on-LAN', f1_p: 'Turn the TV off and back on from the PC. The MAC address is detected for you.',
+    f2_t: 'Volume, inputs, apps', f2_p: 'Volume and mute, switch HDMI inputs and launch installed apps from a list.',
+    f3_t: 'Keys, mouse and number pad', f3_p: 'Directional pad, a trackpad for the TV pointer, and digits to pick a channel by number.',
+    f4_t: 'Type with your keyboard', f4_p: 'Type into search boxes and login fields on the TV with the PC keyboard, paste included.',
+    f5_t: 'Screenshot and images', f5_p: "Save what the TV shows to a file, or send a photo from the PC to the TV's screen.",
+    f6_t: 'On-screen messages', f6_p: 'Pop a short notification onto the TV, handy for a quick note to the room.',
+    s_title: 'A look at the panel', s_sub: 'Dark, compact and fixed-size. The IP and MAC addresses in these pictures are placeholders.',
+    sc1_t: 'Keys', sc1_p: 'Directional pad, volume, inputs and apps.',
+    sc2_t: 'Mouse', sc2_p: 'Click the area to lock the cursor and use it as a trackpad.',
+    sc3_t: 'Numbers', sc3_p: 'Digits, channel up and down, list and OK.',
+    sc4_t: 'Settings', sc4_p: 'TV address, language, start with Windows, pairing.',
+    i_title: 'Install in three steps', i_sub: 'The TV and the PC must be on the same network, and the TV switched on.',
+    i1_t: 'Download and run', i1_p: 'Get the installer and run it. It installs for your user only, so no administrator rights are needed.',
+    i2_t: 'Pick your TV', i2_p: 'TV Tray scans the network and lists the TVs it finds. Click yours: the TV shows a pairing request.',
+    i3_t: 'Accept on the TV', i3_p: 'Accept the request with the remote. From then on, one click on the tray icon opens the panel.',
+    q_title: 'Good to know',
+    q1_q: 'Windows shows a SmartScreen warning',
+    q1_a: 'The installer is not code-signed yet, so Windows warns about an unknown publisher. Choose “More info”, then “Run anyway”. You can check the download against the SHA-256 shown below.',
+    q2_q: 'Is it safe? What does it store?',
+    q2_a: 'The app talks only to your TV on the local network. The pairing key is encrypted with Windows data protection and valid only for your user; no key is in the code. It is open source, so you can read exactly what it does.',
+    q3_q: 'Which TVs are supported?', q3_a: 'LG TVs running webOS. It has been tested on a webOS 25 TV; other models and versions are not verified.',
+    q4_q: 'My TV is not found', q4_a: 'Make sure the TV is on and on the same network, then use “Search again”. You can also enter its IP address by hand in Settings.',
+    sha: 'SHA-256 of the installer:',
+    ft_source: 'Source code', ft_releases: 'All releases', ft_issues: 'Report a problem', ft_license: 'MIT licence',
+    ft_legal: 'Provided as is, without warranty. Use it only with devices you own. This site sets no cookies and has no analytics; your browser contacts GitHub, which hosts the page and the downloads.',
+    ft_note: 'TV Tray is not affiliated with LG Electronics. “LG” and “webOS” are trademarks of their respective owners.',
+    alt_demo: 'Animated demo of TV Tray: pairing with the TV and switching between Keys, Mouse, Numbers and Settings',
+  },
+  it: {
+    nav_features: 'Funzioni', nav_install: 'Installa', pill: 'Gratis · Open source · Windows 10 e 11',
+    h1: 'Telecomando per TV LG dalla barra di Windows',
+    lead: 'Una piccola app gratuita che sta accanto all’orologio e controlla la tua TV LG webOS sulla rete di casa. Nessun account LG, nessuna Developer Mode, niente da installare sulla TV.',
+    download: 'Scarica per Windows', source: 'Vedi il codice',
+    meta_default: 'Windows 10 e 11 · gratuita e open source (MIT)',
+    meta_version: 'Versione {v} · {size} MB · Windows 10 e 11 · gratuita e open source (MIT)',
+    f_title: 'Tutto quello per cui prendi il telecomando',
+    f_sub: 'Un clic sull’icona nella barra apre un pannello compatto. Usa il protocollo di controllo locale della TV: è veloce e nulla esce dalla tua rete.',
+    f1_t: 'Accensione e Wake-on-LAN', f1_p: 'Spegni e riaccendi la TV dal PC. L’indirizzo MAC viene rilevato da solo.',
+    f2_t: 'Volume, ingressi, app', f2_p: 'Volume e muto, cambio ingresso HDMI e avvio delle app installate da un elenco.',
+    f3_t: 'Tasti, mouse e tastierino', f3_p: 'Croce direzionale, un trackpad per il puntatore della TV e le cifre per scegliere un canale.',
+    f4_t: 'Scrivi con la tastiera', f4_p: 'Scrivi nei campi di ricerca e di accesso della TV con la tastiera del PC, incolla compreso.',
+    f5_t: 'Screenshot e immagini', f5_p: 'Salva in un file ciò che mostra la TV, oppure invia una foto dal PC allo schermo della TV.',
+    f6_t: 'Messaggi a schermo', f6_p: 'Mostra una breve notifica sulla TV, comoda per un avviso veloce in stanza.',
+    s_title: 'Uno sguardo al pannello', s_sub: 'Scuro, compatto e di dimensione fissa. Gli indirizzi IP e MAC nelle immagini sono valori di esempio.',
+    sc1_t: 'Tasti', sc1_p: 'Croce direzionale, volume, ingressi e app.',
+    sc2_t: 'Mouse', sc2_p: 'Clicca il riquadro per bloccare il cursore e usarlo da trackpad.',
+    sc3_t: 'Numeri', sc3_p: 'Cifre, canale su e giù, elenco e OK.',
+    sc4_t: 'Impostazioni', sc4_p: 'Indirizzo della TV, lingua, avvio con Windows, collegamento.',
+    i_title: 'Si installa in tre passi', i_sub: 'TV e PC devono essere sulla stessa rete e la TV deve essere accesa.',
+    i1_t: 'Scarica ed esegui', i1_p: 'Scarica l’installer ed eseguilo. Si installa solo per il tuo utente, quindi non servono i diritti di amministratore.',
+    i2_t: 'Scegli la tua TV', i2_p: 'TV Tray cerca nella rete ed elenca le TV trovate. Clicca la tua: la TV mostra una richiesta di collegamento.',
+    i3_t: 'Accetta sulla TV', i3_p: 'Accetta la richiesta con il telecomando. Da quel momento un clic sull’icona nella barra apre il pannello.',
+    q_title: 'Da sapere',
+    q1_q: 'Windows mostra un avviso SmartScreen',
+    q1_a: 'L’installer non è ancora firmato digitalmente, quindi Windows avvisa di un editore sconosciuto. Scegli «Ulteriori informazioni» e poi «Esegui comunque». Puoi verificare il file con lo SHA-256 indicato qui sotto.',
+    q2_q: 'È sicura? Cosa memorizza?',
+    q2_a: 'L’app parla solo con la tua TV sulla rete locale. La chiave di collegamento è cifrata con la protezione dati di Windows ed è valida solo per il tuo utente; nessuna chiave è nel codice. È open source: puoi leggere esattamente cosa fa.',
+    q3_q: 'Quali TV sono supportate?', q3_a: 'TV LG con webOS. È stata provata su una TV con webOS 25; altri modelli e versioni non sono verificati.',
+    q4_q: 'La mia TV non viene trovata', q4_a: 'Controlla che la TV sia accesa e sulla stessa rete, poi usa «Cerca di nuovo». Puoi anche inserire l’indirizzo IP a mano nelle Impostazioni.',
+    sha: 'SHA-256 dell’installer:',
+    ft_source: 'Codice sorgente', ft_releases: 'Tutte le release', ft_issues: 'Segnala un problema', ft_license: 'Licenza MIT',
+    ft_legal: 'Fornita così com’è, senza garanzie. Usala solo con dispositivi tuoi. Questo sito non usa cookie né strumenti di analisi; il tuo browser contatta GitHub, che ospita la pagina e i download.',
+    ft_note: 'TV Tray non è affiliata a LG Electronics. «LG» e «webOS» sono marchi dei rispettivi proprietari.',
+    alt_demo: 'Demo animata di TV Tray: collegamento alla TV e passaggio tra Tasti, Mouse, Numeri e Impostazioni',
+  },
+};
+
+let LANG = 'en';
+let release = null;   // { v, size, url, sha }
+const $ = (s) => document.querySelector(s);
+const t = (k, vars = {}) => (DICT[LANG][k] ?? DICT.en[k] ?? k).replace(/\{(\w+)\}/g, (_, n) => vars[n] ?? '');
+
+function paint() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach((e) => { e.textContent = t(e.dataset.i18n); });
+  document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === LANG)));
+  $('#demo').src = `img/demo-${LANG}.gif`;
+  $('#demo').alt = t('alt_demo');
+  document.querySelectorAll('[data-shot]').forEach((i) => { i.src = `img/${i.dataset.shot}-${LANG}.png`; });
+  if (release) {
+    $('#dl-meta').textContent = t('meta_version', { v: release.v, size: release.size });
+    if (release.sha) {
+      const p = $('#sha'); p.hidden = false;
+      p.textContent = '';
+      p.append(t('sha') + ' ');
+      const c = document.createElement('code'); c.textContent = release.sha; p.append(c);
+    }
+  }
+}
+
+function setLang(l) {
+  LANG = DICT[l] ? l : 'en';
+  try { localStorage.setItem('tvtray-lang', LANG); } catch (_) {}
+  paint();
+}
+document.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.lang)));
+
+let saved = null;
+try { saved = localStorage.getItem('tvtray-lang'); } catch (_) {}
+setLang(saved || ((navigator.language || 'en').toLowerCase().startsWith('it') ? 'it' : 'en'));
+
+// Point the download button at the latest release; the fallback is the releases page.
+fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } })
+  .then((r) => (r.ok ? r.json() : Promise.reject()))
+  .then((rel) => {
+    const asset = (rel.assets || []).find((a) => /\.exe$/i.test(a.name));
+    if (!asset) return;
+    const sha = ((rel.body || '').match(/SHA-256:\s*`?([0-9A-Fa-f]{64})`?/) || [])[1] || '';
+    release = { v: String(rel.tag_name || '').replace(/^v/i, ''), size: (asset.size / 1048576).toFixed(1), url: asset.browser_download_url, sha };
+    $('#dl').href = release.url;
+    paint();
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>
