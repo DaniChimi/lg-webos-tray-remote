@@ -544,11 +544,11 @@ async function discover(auto) {
   for (const f of found) {
     const b = document.createElement('button');
     b.className = 'tv';
-    const t = document.createElement('span'); t.textContent = f.name || t('default_tv');
+    const label = document.createElement('span'); label.textContent = f.name || t('default_tv');
     const s = document.createElement('small');
     const also = f.also.length ? t('also') + ' ' + f.also.join(', ') : null;
     s.textContent = [f.ip, also, f.model].filter(Boolean).join(' · ') + (f.via === 'ssdp' ? '' : ' · ' + t('to_verify'));
-    b.append(t, s);
+    b.append(label, s);
     b.onclick = () => connectTo(f);
     $('flist').append(b);
   }
@@ -611,8 +611,8 @@ document.querySelectorAll('[data-key]').forEach(b =>
   b.onclick = () => run(() => invoke('tv_button', { name: b.dataset.key })));
 
 const sendToast = () => {
-  const t = $('toast').value.trim(); if (!t) return;
-  run(async () => { await tv('ssap://system.notifications/createToast', { message: t }); $('toast').value = ''; say(t('toast_sent')); });
+  const text = $('toast').value.trim(); if (!text) return;
+  run(async () => { await tv('ssap://system.notifications/createToast', { message: text }); $('toast').value = ''; say(t('toast_sent')); });
 };
 $('send').onclick = sendToast;
 // Careful: an onkeydown handler that returns `false` cancels the character being
