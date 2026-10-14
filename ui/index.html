@@ -82,6 +82,14 @@
   .dpad .ok { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 100%, #fff 12%), var(--accent));
     border-color: color-mix(in srgb, var(--accent) 80%, #fff); color: #fff; font-weight: 600; }
   .dpad[hidden] { display: none; }
+  .numpad { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px;
+    height: 140px; margin: 2px 0; }
+  .numpad[hidden] { display: none; }
+  .numpad button { min-height: 0; padding: 0; font-size: 15px; font-weight: 600; background: var(--glass-hi); }
+  .numpad .small, .numpad .ch-up, .numpad .ch-down { font-size: 12px; }
+  .numpad .ch-up { grid-column: 4; grid-row: 1; }
+  .numpad .ch-ok { grid-column: 4; grid-row: 2 / span 2; }
+  .numpad .ch-down { grid-column: 4; grid-row: 4; }
   .sechead { display: flex; align-items: center; justify-content: space-between; }
   .seg { display: flex; gap: 2px; background: var(--glass-in); border-radius: 9px; padding: 2px; border: 1px solid var(--line); }
   .seg button { min-height: 26px; padding: 2px 11px; font-size: 12px; background: transparent; border-color: transparent;
@@ -250,6 +258,7 @@
       <div class="seg" role="tablist" data-i18n-aria="remote_mode" aria-label="Modalità telecomando">
         <button id="m-keys" role="tab" aria-selected="true" data-i18n="keys">Tasti</button>
         <button id="m-pad" role="tab" aria-selected="false" data-i18n="mouse">Mouse</button>
+        <button id="m-nums" role="tab" aria-selected="false" data-i18n="numbers">Numeri</button>
       </div>
     </div>
     <div class="dpad" id="dpad">
@@ -258,6 +267,23 @@
       <button data-key="ENTER" class="ok">OK</button>
       <button data-key="RIGHT" data-i18n-aria="right" aria-label="Destra"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
       <button data-key="DOWN" data-i18n-aria="down" aria-label="Giù"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div id="numpad" class="numpad" hidden>
+      <button data-key="1">1</button>
+      <button data-key="2">2</button>
+      <button data-key="3">3</button>
+      <button data-key="4">4</button>
+      <button data-key="5">5</button>
+      <button data-key="6">6</button>
+      <button data-key="7">7</button>
+      <button data-key="8">8</button>
+      <button data-key="9">9</button>
+      <button data-key="LIST" class="small" data-i18n="k_list">Lista</button>
+      <button data-key="0">0</button>
+      <button data-key="DASH" data-i18n-aria="k_dash" data-i18n-title="k_dash" aria-label="Trattino" title="Trattino">–</button>
+      <button data-key="CHANNELUP" class="ch-up" data-i18n-aria="k_chup" data-i18n-title="k_chup" aria-label="Canale su" title="Canale su">CH +</button>
+      <button data-key="ENTER" class="primary ch-ok">OK</button>
+      <button data-key="CHANNELDOWN" class="ch-down" data-i18n-aria="k_chdown" data-i18n-title="k_chdown" aria-label="Canale giù" title="Canale giù">CH −</button>
     </div>
     <div id="pad" class="pad" hidden tabindex="0" data-i18n-aria="trackpad" aria-label="Trackpad per il puntatore della TV">
       <span id="padtext"><span id="padmain" data-i18n="pad_move">Muovi qui il mouse</span><br><small id="padhint" data-i18n="pad_hint">clic = clic · rotella = scorrimento · tasto destro = indietro</small></span>
@@ -367,6 +393,7 @@ const DICT = {
     mute: 'Muto', audio: 'Audio', vol_down: 'Volume giù', vol_up: 'Volume su', input: 'Ingresso', input_ph: 'Ingresso…',
     remote: 'Telecomando', remote_mode: 'Modalità telecomando', keys: 'Tasti', mouse: 'Mouse',
     up: 'Su', down: 'Giù', left: 'Sinistra', right: 'Destra', k_menu: 'Menu', k_home: 'Home', k_back: 'Indietro', k_exit: 'Esci',
+    numbers: 'Numeri', k_list: 'Lista', k_dash: 'Trattino', k_chup: 'Canale su', k_chdown: 'Canale giù',
     trackpad: 'Trackpad per il puntatore della TV', pad_move: 'Muovi qui il mouse', pad_locked: 'Bloccato: la tastiera scrive sulla TV',
     pad_hint: 'clic = clic · rotella = scorrimento · tasto destro = indietro', pad_hint_locked: 'clic = clic · tasto destro = indietro · Esc per uscire',
     pad_lock: '⌖ Blocca', pad_lock_title: 'Blocca il cursore nel riquadro per movimenti illimitati (Esc per uscire)',
@@ -397,6 +424,7 @@ const DICT = {
     mute: 'Mute', audio: 'Sound', vol_down: 'Volume down', vol_up: 'Volume up', input: 'Input', input_ph: 'Input…',
     remote: 'Remote', remote_mode: 'Remote mode', keys: 'Keys', mouse: 'Mouse',
     up: 'Up', down: 'Down', left: 'Left', right: 'Right', k_menu: 'Menu', k_home: 'Home', k_back: 'Back', k_exit: 'Exit',
+    numbers: 'Numbers', k_list: 'List', k_dash: 'Dash', k_chup: 'Channel up', k_chdown: 'Channel down',
     trackpad: 'Trackpad for the TV pointer', pad_move: 'Move the mouse here', pad_locked: 'Locked: the keyboard types on the TV',
     pad_hint: 'click = click · wheel = scroll · right button = back', pad_hint_locked: 'click = click · right button = back · Esc to exit',
     pad_lock: '⌖ Lock', pad_lock_title: 'Lock the cursor inside the area for unlimited movement (Esc to exit)',
@@ -704,14 +732,14 @@ const padErr = (e) => { if (!padWarned) { padWarned = true; say(String(e), true)
 
 function setMode(mode) {
   const padMode = mode === 'pad';
-  $('dpad').hidden = padMode; pad.hidden = !padMode;
-  $('m-keys').setAttribute('aria-selected', String(!padMode));
-  $('m-pad').setAttribute('aria-selected', String(padMode));
+  $('dpad').hidden = mode !== 'keys'; $('numpad').hidden = mode !== 'nums'; pad.hidden = !padMode;
+  for (const m of ['keys', 'pad', 'nums']) $('m-' + m).setAttribute('aria-selected', String(m === mode));
   if (!padMode && document.pointerLockElement) document.exitPointerLock();
   padWarned = false;
 }
 $('m-keys').onclick = () => setMode('keys');
 $('m-pad').onclick = () => setMode('pad');
+$('m-nums').onclick = () => setMode('nums');
 
 function flushPad() {
   padTimer = null;
