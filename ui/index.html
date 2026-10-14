@@ -107,7 +107,7 @@
     border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 50%; }
   button.icon:hover { background: var(--glass-hi); }
   .overlay { position: absolute; inset: 0; background: var(--overlay-bg); padding: 14px;
-    display: flex; flex-direction: column; gap: 10px; z-index: 5; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px; z-index: 5; overflow: hidden;
     -webkit-backdrop-filter: blur(40px) saturate(170%); backdrop-filter: blur(40px) saturate(170%); }
   .overlay[hidden] { display: none; }
   /* with a screen open, the rest must neither be visible nor receive clicks */
@@ -203,17 +203,20 @@
   #mute.is-muted { background: color-mix(in srgb, var(--accent) 22%, var(--glass)); }
 
   /* ---- Settings and Find TV screens: same structure as the panel (bar, body, bar) ---- */
-  .overlay { padding: 0; gap: 10px; }
+  .overlay { padding: 0; gap: 0; }
   .overlay > header { padding: 8px 10px 8px 10px; background: var(--glass); border-bottom: 1px solid var(--line);
     box-shadow: var(--shine); flex: none; }
   .overlay > header h1 { font-size: 14px; }
-  .overlay > :not(header):not(.msg) { margin: 0 14px; flex: none; }
-  .overlay > section { padding: 10px; gap: 7px; }
+  /* only the body scrolls: the top bar and the footer stay fixed */
+  .overlay > .body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 14px; display: flex;
+    flex-direction: column; gap: 10px; scrollbar-width: thin; }
+  .overlay > .body > * { flex: none; }
+  .overlay > .body > section { padding: 10px; gap: 7px; }
   .overlay button, .overlay select, .overlay input[type=text] { min-height: 34px; padding: 6px 10px; }
   .overlay button.icon { min-height: 36px; padding: 0; }
   .overlay > .msg { flex: none; margin: auto 0 0; min-height: 34px; padding: 8px 14px; display: flex; align-items: center;
     background: var(--glass); border-top: 1px solid var(--line); box-shadow: var(--shine); }
-  .overlay > .foot.foot { margin: auto 0 0; }
+  .overlay > .foot.foot { margin: 0; }
   .foot .msg { margin: 0; padding: 0; min-height: 0; display: block; flex: 1; min-width: 0; background: none;
     border: 0; box-shadow: none; }
 </style>
@@ -296,6 +299,7 @@
       <h1 data-i18n="finder_title">Ricerca TV</h1>
       <button id="fclose" class="icon" data-i18n-aria="close" aria-label="Chiudi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </header>
+    <div class="body">
     <section>
       <p id="fstatus" class="status" role="status"></p>
       <div id="flist" class="list"></div>
@@ -308,6 +312,7 @@
       <label for="flang" data-i18n="language">Lingua</label>
       <select id="flang"><option value="auto" data-i18n="lang_auto">Automatica (sistema)</option><option value="it">Italiano</option><option value="en">English</option></select>
     </section>
+    </div>
     <footer class="foot"><div id="msg3" class="msg"></div><span class="ver" data-i18n-title="version" title="Versione di TV Tray">v 0.3.0</span></footer>
   </div>
 
@@ -317,6 +322,7 @@
       <h1 data-i18n="settings">Impostazioni</h1>
     </header>
 
+    <div class="body">
     <section>
       <h2 data-i18n="saved">Salvate</h2>
       <dl>
@@ -352,6 +358,7 @@
       <button id="unlink" class="danger" data-i18n="unlink">Scollega da questa TV</button>
       <p class="hint" data-i18n="unlink_hint">Dimentica IP, MAC e pairing. Sulla TV la voce dell'app resta nell'elenco dispositivi.</p>
     </section>
+    </div>
     <footer class="foot"><div id="msg2" role="status" class="msg"></div><span class="ver" data-i18n-title="version" title="Versione di TV Tray">v 0.3.0</span></footer>
   </div>
 </main>
