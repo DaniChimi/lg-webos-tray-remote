@@ -1,8 +1,8 @@
-//! Ricerca delle TV LG webOS sulla rete locale.
+//! Discovery of LG webOS TVs on the local network.
 //!
-//! 1. SSDP: richiesta multicast mirata al servizio "second screen" di LG
-//!    (le TV compatibili rispondono, nessuna scansione).
-//! 2. Ripiego: connessione TCP alla porta 3001 degli host della sottorete /24.
+//! 1. SSDP: multicast request aimed at LG's "second screen" service
+//!    (compatible TVs answer, no scanning).
+//! 2. Fallback: TCP connection to port 3001 of the hosts in the /24 subnet.
 
 use serde::Serialize;
 use std::{
@@ -19,17 +19,17 @@ const LG_ST: &str = "urn:lge-com:service:webos-second-screen:1";
 #[derive(Serialize, Clone)]
 pub struct FoundTv {
     pub ip: String,
-    /// Altri indirizzi dello stesso dispositivo (es. TV con Wi-Fi e cavo attivi).
+    /// Other addresses of the same device (e.g. a TV with both Wi-Fi and cable active).
     pub also: Vec<String>,
     pub mac: Option<String>,
     pub name: Option<String>,
     pub model: Option<String>,
-    /// "ssdp" se ha risposto alla ricerca LG, "porta 3001" se trovata dal ripiego.
+    /// "ssdp" if it answered the LG search, "port 3001" if found by the fallback.
     pub via: &'static str,
 }
 
-/// Chiede al sistema il MAC dell'indirizzo IP indicato (richiesta ARP sulla LAN).
-/// Funziona solo se il dispositivo è acceso e nella stessa sottorete; blocca fino a qualche secondo.
+/// Asks the system for the MAC address of the given IP (ARP request on the LAN).
+/// Only works if the device is on and in the same subnet; blocks for up to a few seconds.
 #[cfg(windows)]
 pub fn arp_lookup(ip: Ipv4Addr) -> Option<[u8; 6]> {
     #[link(name = "iphlpapi")]
@@ -39,7 +39,7 @@ pub fn arp_lookup(ip: Ipv4Addr) -> Option<[u8; 6]> {
     let mut buf = [0u8; 8];
     let mut len: u32 = buf.len() as u32;
     let dest = u32::from_ne_bytes(ip.octets());
-    // SAFETY: `buf` e `len` restano validi per tutta la chiamata; `len` dichiara la capienza di `buf`.
+    // SAFETY: `buf` and `len` stay valid for the whole call; `len` declares the capacity of `buf`.
     let rc = unsafe { SendARP(dest, 0, buf.as_mut_ptr(), &mut len) };
     if rc != 0 || len < 6 {
         return None;
@@ -57,7 +57,7 @@ pub fn fmt_mac(m: [u8; 6]) -> String {
     m.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(":")
 }
 
-/// IP del PC sull'interfaccia che raggiunge `target` (nessun pacchetto viene inviato).
+/// IP of the PC on the interface that reaches `target` (no packet is sent).
 pub fn local_ip_towards(target: Ipv4Addr) -> Option<Ipv4Addr> {
     let s = UdpSocket::bind("0.0.0.0:0").ok()?;
     s.connect((target, 3001)).ok()?;
@@ -67,7 +67,7 @@ pub fn local_ip_towards(target: Ipv4Addr) -> Option<Ipv4Addr> {
     }
 }
 
-/// IP del PC sull'interfaccia di default (nessun pacchetto viene inviato).
+/// IP of the PC on the default interface (no packet is sent).
 fn local_ipv4() -> Option<Ipv4Addr> {
     let s = UdpSocket::bind("0.0.0.0:0").ok()?;
     s.connect("8.8.8.8:80").ok()?;
@@ -84,14 +84,14 @@ fn header(text: &str, name: &str) -> Option<String> {
     })
 }
 
-/// Restituisce (ip, location) per ogni dispositivo che risponde alla ricerca LG.
+/// Returns (ip, location) for every device that answers the LG search.
 fn ssdp_search(window: Duration) -> Vec<(Ipv4Addr, Option<String>)> {
     let Ok(sock) = UdpSocket::bind("0.0.0.0:0") else { return vec![] };
     let _ = sock.set_read_timeout(Some(Duration::from_millis(400)));
     let req = format!(
         "M-SEARCH * HTTP/1.1\r\nHOST: {SSDP_ADDR}\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: {LG_ST}\r\n\r\n"
     );
-    // UDP può perdere pacchetti: due invii.
+    // UDP can lose packets: send twice.
     for _ in 0..2 {
         let _ = sock.send_to(req.as_bytes(), SSDP_ADDR);
     }
@@ -114,7 +114,7 @@ fn ssdp_search(window: Duration) -> Vec<(Ipv4Addr, Option<String>)> {
     found
 }
 
-/// GET HTTP minimale (solo per leggere la descrizione UPnP della TV).
+/// Minimal HTTP GET (only to read the TV's UPnP description).
 fn http_get(addr: SocketAddr, host: &str, path: &str) -> Option<String> {
     let mut s = TcpStream::connect_timeout(&addr, Duration::from_millis(1500)).ok()?;
     s.set_read_timeout(Some(Duration::from_secs(2))).ok()?;
@@ -132,7 +132,7 @@ fn xml_tag(xml: &str, tag: &str) -> Option<String> {
     (!v.is_empty()).then(|| v.to_string())
 }
 
-/// Legge nome e modello dalla descrizione UPnP indicata da LOCATION.
+/// Reads name and model from the UPnP description pointed to by LOCATION.
 fn describe(ip: Ipv4Addr, location: &str) -> (Option<String>, Option<String>) {
     let rest = location.strip_prefix("http://").unwrap_or(location);
     let (hostport, path) = rest.split_once('/').map(|(h, p)| (h, format!("/{p}"))).unwrap_or((rest, "/".into()));
@@ -143,14 +143,14 @@ fn describe(ip: Ipv4Addr, location: &str) -> (Option<String>, Option<String>) {
     }
 }
 
-/// Ripiego: host della /24 con la porta 3001 aperta (escluso il PC stesso).
+/// Fallback: hosts of the /24 with port 3001 open (excluding the PC itself).
 fn scan_port_3001(local: Ipv4Addr) -> Vec<Ipv4Addr> {
     let o = local.octets();
     let hosts: Vec<u8> = (1..=254u8).filter(|h| *h != o[3]).collect();
     let found = Mutex::new(Vec::new());
     let found_ref = &found;
     thread::scope(|s| {
-        // 32 thread da 8 host: la scansione completa dura circa 3 secondi.
+        // 32 threads of 8 hosts each: the full scan takes about 3 seconds.
         for chunk in hosts.chunks(8) {
             s.spawn(move || {
                 for h in chunk {
@@ -172,7 +172,7 @@ fn scan_port_3001(local: Ipv4Addr) -> Vec<Ipv4Addr> {
 mod tests {
     use super::*;
 
-    /// Prova su rete reale: `cargo test live_discovery -- --nocapture --ignored`.
+    /// Test on a real network: `cargo test live_discovery -- --nocapture --ignored`.
     #[test]
     #[ignore]
     fn live_discovery() {
@@ -180,7 +180,7 @@ mod tests {
         let t = Instant::now();
         for f in discover(Some("192.168.0.83")) {
             println!(
-                "trovata: {} (anche {:?}) | mac {:?} | {:?} | {:?} | via {}",
+                "found: {} (also {:?}) | mac {:?} | {:?} | {:?} | via {}",
                 f.ip, f.also, f.mac, f.name, f.model, f.via
             );
         }
@@ -198,8 +198,8 @@ mod tests {
     }
 }
 
-/// Cerca TV LG. `preferred` è l'IP già configurato: se la TV ha più indirizzi
-/// (Wi-Fi e cavo) viene proposto quello come principale.
+/// Looks for LG TVs. `preferred` is the already configured IP: if the TV has several addresses
+/// (Wi-Fi and cable) that one is offered as the main address.
 pub fn discover(preferred: Option<&str>) -> Vec<FoundTv> {
     let new = |ip: Ipv4Addr, name, model, via| FoundTv {
         ip: ip.to_string(),
@@ -222,13 +222,13 @@ pub fn discover(preferred: Option<&str>) -> Vec<FoundTv> {
         if let Some(local) = local_ipv4() {
             found = scan_port_3001(local)
                 .into_iter()
-                .map(|ip| new(ip, None, None, "porta 3001"))
+                .map(|ip| new(ip, None, None, "port 3001"))
                 .collect();
         }
     }
 
-    // Una TV con Wi-Fi e cavo risponde da due indirizzi con lo stesso MAC:
-    // si raggruppa per MAC, così compare una sola volta.
+    // A TV with Wi-Fi and cable answers from two addresses with the same MAC:
+    // group by MAC so it appears only once.
     let mut groups: Vec<FoundTv> = vec![];
     for mut f in found {
         f.mac = f.ip.parse().ok().and_then(arp_lookup).map(fmt_mac);

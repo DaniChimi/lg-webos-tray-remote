@@ -1,7 +1,7 @@
-//! Client SSAP (WebSocket) per TV LG webOS.
+//! SSAP (WebSocket) client for LG webOS TVs.
 //!
-//! Una sola connessione persistente, serializzata da un mutex nel chiamante.
-//! Se la connessione cade viene riaperta una volta in modo trasparente.
+//! A single persistent connection, serialized by a mutex in the caller.
+//! If the connection drops it is reopened once, transparently.
 
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
@@ -13,16 +13,16 @@ use tokio_tungstenite::{
 
 type Ws = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-/// Manifest dei permessi (da lgtv2, licenza MIT). Senza, la TV risponde 401.
+/// Permission manifest (from lgtv2, MIT licence). Without it the TV answers 401.
 const PAIRING: &str = include_str!("pairing.json");
 
-/// I messaggi di errore che arrivano dalla TV iniziano con questo prefisso:
-/// non vanno ritentati, a differenza degli errori di trasporto.
+/// Error messages that come from the TV start with this prefix:
+/// they must not be retried, unlike transport errors.
 const TV_ERR: &str = "TV: ";
 
 fn tls() -> Result<Connector, String> {
-    // La TV usa un certificato autofirmato: l'accettazione è limitata alla LAN
-    // dell'indirizzo configurato dall'utente.
+    // The TV uses a self-signed certificate: acceptance is limited to the LAN
+    // of the address configured by the user.
     let c = native_tls::TlsConnector::builder()
         .danger_accept_invalid_certs(true)
         .danger_accept_invalid_hostnames(true)
@@ -35,7 +35,7 @@ async fn open(url: &str) -> Result<Ws, String> {
     let fut = connect_async_tls_with_config(url, None, false, Some(tls()?));
     let (ws, _) = timeout(Duration::from_secs(5), fut)
         .await
-        .map_err(|_| "TV non raggiungibile (timeout)".to_string())?
+        .map_err(|_| crate::i18n::t("connect_timeout"))?
         .map_err(|e| e.to_string())?;
     Ok(ws)
 }
@@ -48,7 +48,7 @@ async fn register(ws: &mut Ws, key: &Option<String>) -> Result<String, String> {
     let msg = json!({ "type": "register", "id": "register_0", "payload": payload });
     ws.send(msg.to_string().into()).await.map_err(|e| e.to_string())?;
 
-    // Al primo pairing l'utente deve accettare il prompt sulla TV.
+    // On the first pairing the user must accept the prompt on the TV.
     let wait = if key.is_some() { 10 } else { 60 };
     let fut = async {
         while let Some(m) = ws.next().await {
@@ -63,21 +63,21 @@ async fn register(ws: &mut Ws, key: &Option<String>) -> Result<String, String> {
                     return Ok(v["payload"]["client-key"].as_str().unwrap_or_default().to_string())
                 }
                 Some("error") => return Err(format!("{TV_ERR}{}", v["error"])),
-                _ => {} // "response": prompt mostrato, in attesa
+                _ => {} // "response": prompt shown, waiting
             }
         }
-        Err("connessione chiusa durante il pairing".to_string())
+        Err(crate::i18n::t("pairing_closed"))
     };
     timeout(Duration::from_secs(wait), fut)
         .await
-        .map_err(|_| "pairing scaduto: accetta il prompt sulla TV".to_string())?
+        .map_err(|_| crate::i18n::t("pairing_expired"))?
 }
 
 #[derive(Default)]
 pub struct Ssap {
     pub ip: String,
     pub client_key: Option<String>,
-    /// Vero se la chiave è cambiata e va salvata su disco.
+    /// True if the key changed and must be saved to disk.
     pub key_dirty: bool,
     ws: Option<Ws>,
     pointer: Option<Ws>,
@@ -98,7 +98,7 @@ impl Ssap {
 
     pub async fn connect(&mut self) -> Result<(), String> {
         if self.ip.trim().is_empty() {
-            return Err("IP della TV non impostato".into());
+            return Err(crate::i18n::t("tv_ip_unset"));
         }
         let mut ws = open(&format!("wss://{}:3001", self.ip.trim())).await?;
         let key = register(&mut ws, &self.client_key).await?;
@@ -131,7 +131,7 @@ impl Ssap {
     async fn try_request(&mut self, uri: &str, payload: &Value) -> Result<Value, String> {
         self.counter += 1;
         let id = format!("req_{}", self.counter);
-        let ws = self.ws.as_mut().ok_or("non connesso")?;
+        let ws = self.ws.as_mut().ok_or_else(|| crate::i18n::t("not_connected"))?;
         let msg = json!({ "type": "request", "id": id, "uri": uri, "payload": payload });
         ws.send(msg.to_string().into()).await.map_err(|e| e.to_string())?;
 
@@ -149,21 +149,21 @@ impl Ssap {
                     }
                     Some(Ok(_)) => {}
                     Some(Err(e)) => return Err(e.to_string()),
-                    None => return Err("connessione chiusa".to_string()),
+                    None => return Err(crate::i18n::t("conn_closed")),
                 }
             }
         };
         timeout(Duration::from_secs(8), fut)
             .await
-            .map_err(|_| "timeout risposta dalla TV".to_string())?
+            .map_err(|_| crate::i18n::t("tv_timeout"))?
     }
 
-    /// Simula un tasto del telecomando (UP, DOWN, LEFT, RIGHT, ENTER, BACK, HOME, ...).
+    /// Simulates a remote-control key (UP, DOWN, LEFT, RIGHT, ENTER, BACK, HOME, ...).
     pub async fn button(&mut self, name: &str) -> Result<(), String> {
         self.pointer_send(format!("type:button\nname:{name}\n\n")).await
     }
 
-    /// Movimento relativo del puntatore (come il Magic Remote).
+    /// Relative pointer movement (like the Magic Remote).
     pub async fn pointer_move(&mut self, dx: i32, dy: i32) -> Result<(), String> {
         self.pointer_send(format!("type:move\ndx:{dx}\ndy:{dy}\n\n")).await
     }
@@ -176,22 +176,22 @@ impl Ssap {
         self.pointer_send(format!("type:scroll\ndx:0\ndy:{dy}\n\n")).await
     }
 
-    /// Invia un messaggio sul socket di input, aprendolo se serve.
+    /// Sends a message on the input socket, opening it if needed.
     async fn pointer_send(&mut self, text: String) -> Result<(), String> {
         for _ in 0..2 {
             if self.pointer.is_none() {
                 let r = self
                     .request("ssap://com.webos.service.networkinput/getPointerInputSocket", json!({}))
                     .await?;
-                let url = r["socketPath"].as_str().ok_or("socketPath assente nella risposta")?;
+                let url = r["socketPath"].as_str().ok_or_else(|| crate::i18n::t("no_socket"))?;
                 self.pointer = Some(open(url).await?);
             }
             let res = self.pointer.as_mut().unwrap().send(text.clone().into()).await;
             match res {
                 Ok(()) => return Ok(()),
-                Err(_) => self.pointer = None, // riapre il socket e riprova
+                Err(_) => self.pointer = None, // reopens the socket and retries
             }
         }
-        Err("invio al puntatore non riuscito".into())
+        Err(crate::i18n::t("pointer_failed"))
     }
 }

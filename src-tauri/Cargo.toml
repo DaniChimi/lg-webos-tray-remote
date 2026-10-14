@@ -1,7 +1,7 @@
 [package]
 name = "tv-tray"
 version = "0.2.1"
-description = "Controllo rapido per TV LG webOS dalla tray di Windows"
+description = "Quick control of an LG webOS TV from the Windows system tray"
 edition = "2021"
 
 [profile.dev.package."*"]

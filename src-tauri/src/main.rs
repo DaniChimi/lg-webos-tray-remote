@@ -3,6 +3,7 @@
 mod capture;
 mod discovery;
 mod dpapi;
+mod i18n;
 mod share;
 mod ssap;
 
@@ -20,18 +21,20 @@ use tauri::{
     AppHandle, Manager, PhysicalPosition, Rect, State, WebviewWindow, WindowEvent,
 };
 
-// ---------------------------------------------------------------- configurazione
+// ---------------------------------------------------------------- configuration
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Config {
     ip: String,
     mac: Option<String>,
     client_key: Option<String>,
+    /// `None` = system language; otherwise `it` or `en`.
+    lang: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { ip: "192.168.0.83".into(), mac: None, client_key: None }
+        Config { ip: "192.168.0.83".into(), mac: None, client_key: None, lang: None }
     }
 }
 
@@ -41,21 +44,23 @@ struct AppState {
     file: PathBuf,
 }
 
-/// Formato su disco: la chiave di pairing è cifrata con DPAPI (solo questo utente
-/// Windows, su questo PC, può leggerla).
+/// On-disk format: the pairing key is encrypted with DPAPI (only this Windows
+/// user, on this PC, can read it).
 #[derive(Serialize, Deserialize, Default)]
 struct DiskConfig {
     ip: Option<String>,
     mac: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     client_key_enc: Option<String>,
-    /// Compare solo nei vecchi file (chiave in chiaro) o se DPAPI non è disponibile.
+    /// Only appears in old files (plain-text key) or when DPAPI is unavailable.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     client_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    lang: Option<String>,
 }
 
-/// Legge la configurazione. Il booleano indica che il file va riscritto
-/// (vecchio formato con la chiave in chiaro).
+/// Reads the configuration. The boolean says the file must be rewritten
+/// (old format with the plain-text key).
 fn load_config(file: &std::path::Path) -> (Config, bool) {
     let parsed = fs::read_to_string(file)
         .ok()
@@ -64,7 +69,7 @@ fn load_config(file: &std::path::Path) -> (Config, bool) {
 
     let mut rewrite = false;
     let key = match (&d.client_key_enc, &d.client_key) {
-        (Some(enc), _) => dpapi::open(enc), // non decifrabile: servirà un nuovo pairing
+        (Some(enc), _) => dpapi::open(enc), // cannot be decrypted: a new pairing will be needed
         (None, Some(plain)) => {
             rewrite = true;
             Some(plain.clone())
@@ -75,6 +80,7 @@ fn load_config(file: &std::path::Path) -> (Config, bool) {
         ip: d.ip.unwrap_or_else(|| Config::default().ip),
         mac: d.mac,
         client_key: key,
+        lang: d.lang.filter(|l| l == "it" || l == "en"),
     };
     (cfg, rewrite)
 }
@@ -89,23 +95,28 @@ impl AppState {
         let disk = DiskConfig {
             ip: Some(cfg.ip.clone()),
             mac: cfg.mac.clone(),
-            // se la cifratura non è disponibile si conserva il valore, per non perdere il pairing
+            // if encryption is unavailable the value is kept, so the pairing is not lost
             client_key: if sealed.is_none() { cfg.client_key.clone() } else { None },
             client_key_enc: sealed,
+            lang: cfg.lang.clone(),
         };
         let text = serde_json::to_string_pretty(&disk).map_err(|e| e.to_string())?;
         fs::write(&self.file, text).map_err(|e| e.to_string())
     }
 }
 
-/// Dati di configurazione visibili all'interfaccia (la chiave di pairing no).
+/// Configuration data visible to the interface (the pairing key is not).
 #[derive(Serialize)]
 struct PublicConfig {
     ip: String,
     mac: Option<String>,
     paired: bool,
-    /// Percorso del file di configurazione sul disco.
+    /// Path of the configuration file on disk.
     file: String,
+    /// The user's choice: `auto`, `it` or `en`.
+    lang: String,
+    /// Language in use (`it` or `en`).
+    lang_effective: String,
 }
 
 fn public(cfg: &Config, file: &std::path::Path) -> PublicConfig {
@@ -114,10 +125,44 @@ fn public(cfg: &Config, file: &std::path::Path) -> PublicConfig {
         mac: cfg.mac.clone(),
         paired: cfg.client_key.is_some(),
         file: file.display().to_string(),
+        lang: cfg.lang.clone().unwrap_or_else(|| "auto".to_string()),
+        lang_effective: i18n::current().to_string(),
     }
 }
 
-// ---------------------------------------------------------------- comandi
+// ---------------------------------------------------------------- commands
+
+/// Tray menu in the current language.
+fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
+    let open = MenuItem::with_id(app, "open", i18n::t("tray_open"), true, None::<&str>)?;
+    let off = MenuItem::with_id(app, "off", i18n::t("tray_off"), true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", i18n::t("tray_quit"), true, None::<&str>)?;
+    Menu::with_items(app, &[&open, &off, &quit])
+}
+
+/// Rebuilds the menu and the icon tooltip after a language change.
+fn refresh_tray(app: &AppHandle) {
+    if let Some(tray) = app.tray_by_id("main") {
+        if let Ok(menu) = build_menu(app) {
+            let _ = tray.set_menu(Some(menu));
+        }
+        let _ = tray.set_tooltip(Some(i18n::t("tray_tooltip")));
+    }
+}
+
+/// Changes the language: `it`, `en` or `auto` (Windows language).
+#[tauri::command]
+fn set_language(app: AppHandle, state: State<'_, AppState>, lang: String) -> Result<PublicConfig, String> {
+    let chosen = match lang.as_str() {
+        "it" | "en" => Some(lang),
+        _ => None,
+    };
+    state.cfg.lock().unwrap().lang = chosen.clone();
+    i18n::set(&chosen.unwrap_or_else(i18n::system_lang));
+    state.persist()?;
+    refresh_tray(&app);
+    Ok(public(&state.cfg.lock().unwrap(), &state.file))
+}
 
 #[tauri::command]
 fn get_config(state: State<'_, AppState>) -> PublicConfig {
@@ -132,7 +177,7 @@ async fn save_config(
 ) -> Result<PublicConfig, String> {
     let ip = ip.trim().to_string();
     if ip.parse::<std::net::Ipv4Addr>().is_err() {
-        return Err("indirizzo IP non valido".into());
+        return Err(i18n::t("ip_invalid"));
     }
     let mac = mac.map(|m| m.trim().to_string()).filter(|m| !m.is_empty());
     if let Some(m) = &mac {
@@ -141,7 +186,7 @@ async fn save_config(
     let (key, out) = {
         let mut cfg = state.cfg.lock().unwrap();
         if cfg.ip != ip {
-            cfg.client_key = None; // la chiave vale solo per quella TV
+            cfg.client_key = None; // the key is only valid for that TV
         }
         cfg.ip = ip.clone();
         cfg.mac = mac;
@@ -152,8 +197,8 @@ async fn save_config(
     Ok(out)
 }
 
-/// Disaccoppia l'app dalla TV: dimentica chiave di pairing, IP e MAC.
-/// La TV non viene toccata: la voce dell'app resta nel suo elenco dispositivi.
+/// Unpairs the app from the TV: forgets pairing key, IP and MAC.
+/// The TV is left untouched: the app's entry stays in its device list.
 #[tauri::command]
 async fn unpair(state: State<'_, AppState>) -> Result<PublicConfig, String> {
     let out = {
@@ -168,7 +213,7 @@ async fn unpair(state: State<'_, AppState>) -> Result<PublicConfig, String> {
     Ok(out)
 }
 
-/// Salva su disco la chiave di pairing se la connessione ne ha ottenuta una nuova.
+/// Saves the pairing key to disk if the connection obtained a new one.
 fn sync_key(state: &AppState, s: &mut ssap::Ssap) -> Result<(), String> {
     if s.key_dirty {
         state.cfg.lock().unwrap().client_key = s.client_key.clone();
@@ -185,7 +230,7 @@ async fn pair(state: State<'_, AppState>) -> Result<PublicConfig, String> {
     s.connect().await?;
     sync_key(&state, &mut s)?;
     drop(s);
-    // La TV è raggiungibile: è il momento buono per memorizzare il MAC.
+    // The TV is reachable: a good moment to store the MAC address.
     remember_mac(&state).await;
     Ok(public(&state.cfg.lock().unwrap(), &state.file))
 }
@@ -212,8 +257,8 @@ async fn tv_button(state: State<'_, AppState>, name: String) -> Result<(), Strin
 
 use discovery::{arp_lookup, fmt_mac};
 
-/// Rileva il MAC attuale della TV e, se è nuovo o diverso, lo salva nella configurazione.
-/// Restituisce il MAC valido (appena rilevato oppure quello già salvato).
+/// Detects the TV's current MAC and, if it is new or different, saves it in the configuration.
+/// Returns the valid MAC (just detected or the one already saved).
 async fn remember_mac(state: &AppState) -> Option<String> {
     let ip: std::net::Ipv4Addr = state.cfg.lock().unwrap().ip.parse().ok()?;
     let found = tauri::async_runtime::spawn_blocking(move || arp_lookup(ip))
@@ -235,15 +280,15 @@ async fn remember_mac(state: &AppState) -> Option<String> {
 #[derive(Serialize)]
 struct PowerResult {
     mac: Option<String>,
-    /// Presente se la riaccensione da remoto non è garantita.
+    /// Present if powering on remotely is not guaranteed.
     warning: Option<String>,
 }
 
-/// Aggiorna il MAC e poi spegne la TV: ordine voluto, perché da spenta non è più rilevabile.
+/// Updates the MAC and then powers the TV off: intentional order, since it cannot be detected once off.
 async fn do_power_off(state: &AppState) -> Result<PowerResult, String> {
     let mac = remember_mac(state).await;
     let warning = if mac.is_none() {
-        Some("MAC non rilevato: la riaccensione da PC non è possibile".to_string())
+        Some(i18n::t("mac_undetected"))
     } else {
         None
     };
@@ -259,8 +304,8 @@ async fn power_off(state: State<'_, AppState>) -> Result<PowerResult, String> {
     do_power_off(&state).await
 }
 
-/// Cattura lo schermo della TV e salva il JPEG in Immagini\TV Screenshots.
-/// Passa dal servizio di cattura della TV (SSAP), senza SSH.
+/// Captures the TV screen and saves the JPEG in Pictures\TV Screenshots.
+/// Goes through the TV's capture service (SSAP), without SSH.
 #[tauri::command]
 async fn screenshot(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
     let reply = {
@@ -277,7 +322,7 @@ async fn screenshot(app: AppHandle, state: State<'_, AppState>) -> Result<String
     };
     let uri = reply["imageUri"]
         .as_str()
-        .ok_or("la TV non ha restituito l'immagine (contenuto protetto?)")?
+        .ok_or_else(|| i18n::t("tv_no_image"))?
         .to_string();
     let bytes = tauri::async_runtime::spawn_blocking(move || capture::https_get(&uri))
         .await
@@ -294,12 +339,12 @@ async fn screenshot(app: AppHandle, state: State<'_, AppState>) -> Result<String
     Ok(file.display().to_string())
 }
 
-/// Mostra un file in Esplora risorse.
+/// Shows a file in File Explorer.
 #[tauri::command]
 fn reveal_file(path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
     if !p.is_file() {
-        return Err("file non trovato".into());
+        return Err(i18n::t("file_missing"));
     }
     std::process::Command::new("explorer")
         .arg(format!("/select,{}", p.display()))
@@ -308,9 +353,9 @@ fn reveal_file(path: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-/// Sceglie un file e lo fa aprire alla TV: il PC lo serve sulla rete locale per
-/// un'ora e la TV lo carica nel suo browser.
-/// Riduce l'immagine a 1920x1080 al massimo e la salva come JPEG temporaneo da condividere.
+/// Picks a file and has the TV open it: the PC serves it on the local network for
+/// one hour and the TV loads it in its browser.
+/// Resizes the image to at most 1920x1080 and saves it as a temporary JPEG to share.
 fn prepare_image(src: &std::path::Path) -> Result<std::path::PathBuf, String> {
     use image::{imageops::FilterType, GenericImageView, ImageReader};
     const MAX_W: u32 = 1920;
@@ -318,14 +363,14 @@ fn prepare_image(src: &std::path::Path) -> Result<std::path::PathBuf, String> {
     const MAX_BYTES: u64 = 40 * 1024 * 1024;
     let len = std::fs::metadata(src).map_err(|e| e.to_string())?.len();
     if len > MAX_BYTES {
-        return Err(format!("file troppo grande ({} MB): il limite è 40 MB", len / (1024 * 1024)));
+        return Err(i18n::tf("file_too_big", &[("mb", &(len / (1024 * 1024)).to_string())]));
     }
     let img = ImageReader::open(src)
         .map_err(|e| e.to_string())?
         .with_guessed_format()
         .map_err(|e| e.to_string())?
         .decode()
-        .map_err(|e| format!("immagine non leggibile: {e}"))?;
+        .map_err(|e| i18n::tf("image_unreadable", &[("err", &e.to_string())]))?;
     let (w, h) = img.dimensions();
     let img = if w > MAX_W || h > MAX_H { img.resize(MAX_W, MAX_H, FilterType::Triangle) } else { img };
     let dir = std::env::temp_dir().join("tvtray-share");
@@ -348,34 +393,34 @@ async fn send_file(app: AppHandle, state: State<'_, AppState>) -> Result<String,
         .unwrap()
         .ip
         .parse()
-        .map_err(|_| "IP della TV non impostato")?;
+        .map_err(|_| i18n::t("tv_ip_unset"))?;
 
     let dialog_app = app.clone();
     let picked = tauri::async_runtime::spawn_blocking(move || {
         dialog_app
             .dialog()
             .file()
-            .add_filter("Immagini", &["jpg", "jpeg", "png"])
+            .add_filter(&i18n::t("dlg_images"), &["jpg", "jpeg", "png"])
             .blocking_pick_file()
     })
     .await
     .map_err(|e| e.to_string())?;
-    let Some(picked) = picked else { return Ok(String::new()) }; // annullato
+    let Some(picked) = picked else { return Ok(String::new()) }; // cancelled
 
     let path = picked.into_path().map_err(|e| e.to_string())?;
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file").to_string();
-    // Una foto da 23 megapixel (anche se pesa 1,4 MB) ha bloccato la TV: la riduco prima di
-    // condividerla. La TV è 4K al massimo, 1920x1080 basta e avanza per mostrarla.
+    // A 23-megapixel photo (even at 1.4 MB) froze the TV: it is resized before
+    // sharing. The TV is 4K at most; 1920x1080 is more than enough to display it.
     let src = path.clone();
     let path = tauri::async_runtime::spawn_blocking(move || prepare_image(&src))
         .await
         .map_err(|e| e.to_string())??;
-    let local = discovery::local_ip_towards(tv_ip).ok_or("indirizzo del PC sulla rete non trovato")?;
+    let local = discovery::local_ip_towards(tv_ip).ok_or_else(|| i18n::t("pc_ip_unknown"))?;
     let url = share::start(path, local)?;
 
     let mut s = state.ssap.lock().await;
-    // `system.launcher/open` con un indirizzo del PC blocca il browser della TV: si lancia
-    // il browser in modo esplicito, come ha fatto il caso verificato con lo spike.
+    // `system.launcher/open` with a PC address freezes the TV's browser: the browser is
+    // launched explicitly instead, as in the case verified with the spike.
     let r = s
         .request(
             "ssap://system.launcher/launch",
@@ -405,7 +450,7 @@ fn set_autostart(app: AppHandle, enabled: bool) -> Result<bool, String> {
     launcher.is_enabled().map_err(|e| e.to_string())
 }
 
-/// Puntatore del Magic Remote: `kind` è "move", "click" o "scroll".
+/// Magic Remote pointer: `kind` is "move", "click" or "scroll".
 #[tauri::command]
 async fn tv_pointer(
     state: State<'_, AppState>,
@@ -413,14 +458,14 @@ async fn tv_pointer(
     dx: Option<i32>,
     dy: Option<i32>,
 ) -> Result<(), String> {
-    // Valori limitati: un movimento anomalo non deve poter inondare la TV.
+    // Clamped values: an anomalous movement must not be able to flood the TV.
     let (dx, dy) = (dx.unwrap_or(0).clamp(-200, 200), dy.unwrap_or(0).clamp(-200, 200));
     let mut s = state.ssap.lock().await;
     let res = match kind.as_str() {
         "move" => s.pointer_move(dx, dy).await,
         "click" => s.pointer_click().await,
         "scroll" => s.pointer_scroll(dy).await,
-        _ => Err("tipo di puntatore non valido".to_string()),
+        _ => Err(i18n::t("pointer_invalid")),
     };
     sync_key(&state, &mut s)?;
     res
@@ -429,19 +474,19 @@ async fn tv_pointer(
 fn parse_mac(text: &str) -> Result<[u8; 6], String> {
     let parts: Vec<&str> = text.split(|c| c == ':' || c == '-').collect();
     if parts.len() != 6 {
-        return Err("MAC non valido (atteso aa:bb:cc:dd:ee:ff)".into());
+        return Err(i18n::t("mac_format"));
     }
     let mut out = [0u8; 6];
     for (i, p) in parts.iter().enumerate() {
-        out[i] = u8::from_str_radix(p, 16).map_err(|_| "MAC non valido".to_string())?;
+        out[i] = u8::from_str_radix(p, 16).map_err(|_| i18n::t("mac_invalid"))?;
     }
     Ok(out)
 }
 
-/// Cerca TV LG webOS sulla rete locale (SSDP, con ripiego sulla porta 3001).
+/// Looks for LG webOS TVs on the local network (SSDP, falling back to port 3001).
 #[tauri::command]
 async fn discover_tvs(state: State<'_, AppState>) -> Result<Vec<discovery::FoundTv>, String> {
-    // Se la TV ha più indirizzi (Wi-Fi e cavo) si preferisce quello già configurato.
+    // If the TV has several addresses (Wi-Fi and cable) the already configured one is preferred.
     let preferred = state.cfg.lock().unwrap().ip.clone();
     tauri::async_runtime::spawn_blocking(move || discovery::discover(Some(&preferred)))
         .await
@@ -456,7 +501,7 @@ fn wake(state: State<'_, AppState>) -> Result<(), String> {
         .unwrap()
         .mac
         .clone()
-        .ok_or("MAC non impostato: serve per accendere la TV")?;
+        .ok_or_else(|| i18n::t("mac_unset"))?;
     let mac = parse_mac(&mac)?;
     let mut packet = vec![0xFFu8; 6];
     for _ in 0..16 {
@@ -465,7 +510,7 @@ fn wake(state: State<'_, AppState>) -> Result<(), String> {
     let sock = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| e.to_string())?;
     sock.set_broadcast(true).map_err(|e| e.to_string())?;
 
-    // Broadcast generale e broadcast della sottorete (si assume una /24), porte 9 e 7.
+    // General broadcast and subnet broadcast (a /24 is assumed), ports 9 and 7.
     let mut targets = vec!["255.255.255.255".to_string()];
     if let Ok(ip) = state.cfg.lock().unwrap().ip.parse::<std::net::Ipv4Addr>() {
         let o = ip.octets();
@@ -477,10 +522,10 @@ fn wake(state: State<'_, AppState>) -> Result<(), String> {
             sent |= sock.send_to(&packet, (t.as_str(), port)).is_ok();
         }
     }
-    if sent { Ok(()) } else { Err("invio del pacchetto non riuscito".into()) }
+    if sent { Ok(()) } else { Err(i18n::t("wol_failed")) }
 }
 
-// ---------------------------------------------------------------- pannello vicino alla tray
+// ---------------------------------------------------------------- panel next to the tray
 
 static LAST_BLUR: Mutex<Option<Instant>> = Mutex::new(None);
 
@@ -507,7 +552,7 @@ fn place(w: &WebviewWindow, rect: Option<Rect>) {
             let s = r.size.to_physical::<f64>(scale);
             (p.x + s.width / 2.0 - win_w / 2.0, p.y - win_h - margin)
         }
-        // Senza icona di riferimento: angolo in basso a destra, sopra la barra.
+        // Without a reference icon: bottom-right corner, above the taskbar.
         None => (mx + mw - win_w - margin, my + mh - win_h - 56.0 * scale),
     };
     x = x.clamp(mx + margin, (mx + mw - win_w - margin).max(mx + margin));
@@ -520,8 +565,8 @@ fn show_panel(app: &AppHandle, rect: Option<Rect>) {
     place(&w, rect);
     let _ = w.show();
     let _ = w.set_focus();
-    // `set_focus` della finestra non dà il focus della tastiera alla pagina web:
-    // senza questo le caselle di testo del pannello non ricevono i tasti.
+    // The window's `set_focus` does not give keyboard focus to the web page:
+    // without this the panel's text boxes do not receive keys.
     let webview: &tauri::Webview = w.as_ref();
     let _ = webview.set_focus();
 }
@@ -532,8 +577,8 @@ fn toggle_panel(app: &AppHandle, rect: Rect) {
         let _ = w.hide();
         return;
     }
-    // Il click sull'icona toglie prima il focus alla finestra (che si nasconde):
-    // senza questo controllo il pannello si richiuderebbe e riaprirebbe subito.
+    // Clicking the icon first takes focus away from the window (which hides):
+    // without this check the panel would close and reopen immediately.
     let just_blurred = LAST_BLUR
         .lock()
         .unwrap()
@@ -553,7 +598,7 @@ fn config_file(app: &tauri::App) -> PathBuf {
 
 fn main() {
     tauri::Builder::default()
-        // Deve essere il primo plugin: una seconda copia apre il pannello della prima.
+        // Must be the first plugin: a second copy opens the first one's panel.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             show_panel(app, None);
         }))
@@ -565,9 +610,10 @@ fn main() {
         .setup(|app| {
             let file = config_file(app);
             let (cfg, rewrite) = load_config(&file);
-            // Senza chiave di pairing la TV non è ancora collegata: al primo avvio
-            // si apre il pannello, che avvia da solo la ricerca.
+            // Without a pairing key the TV is not paired yet: on first run
+            // the panel opens and starts the search by itself.
             let first_run = cfg.client_key.is_none();
+            i18n::set(&cfg.lang.clone().unwrap_or_else(i18n::system_lang));
             let mut s = ssap::Ssap::default();
             s.set_target(cfg.ip.clone(), cfg.client_key.clone());
             app.manage(AppState {
@@ -576,18 +622,15 @@ fn main() {
                 file,
             });
             if rewrite {
-                // migrazione: la chiave in chiaro viene sostituita da quella cifrata
+                // migration: the plain-text key is replaced by the encrypted one
                 let _ = app.state::<AppState>().persist();
             }
 
-            let open = MenuItem::with_id(app, "open", "Apri pannello", true, None::<&str>)?;
-            let off = MenuItem::with_id(app, "off", "Spegni TV", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Esci", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &off, &quit])?;
+            let menu = build_menu(app.handle())?;
 
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().ok_or("icona mancante")?)
-                .tooltip("Controllo TV LG")
+                .tooltip(i18n::t("tray_tooltip"))
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -621,9 +664,9 @@ fn main() {
         })
         .on_window_event(|window, event| match event {
             WindowEvent::Focused(false) if window.label() == "main" => {
-                // Quando il focus passa dalla finestra al webview Windows genera
-                // Focused(false) seguito, pochi ms dopo, da Focused(true). Si nasconde
-                // solo se il focus non è tornato: è un vero click fuori dal pannello.
+                // When focus moves from the window to the webview, Windows generates
+                // Focused(false) followed a few ms later by Focused(true). Hide only
+                // if focus did not come back: it is a real click outside the panel.
                 let w = window.clone();
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(Duration::from_millis(150)).await;
@@ -641,8 +684,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             get_config, save_config, pair, tv_request, tv_button, wake, power_off, discover_tvs, unpair,
-            tv_pointer, get_autostart, set_autostart, screenshot, reveal_file, send_file
+            tv_pointer, get_autostart, set_autostart, screenshot, reveal_file, send_file, set_language
         ])
         .run(tauri::generate_context!())
-        .expect("errore nell'avvio dell'app");
+        .expect("error while starting the app");
 }

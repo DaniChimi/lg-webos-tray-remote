@@ -1,4 +1,4 @@
-//! Scarico dell'immagine di screenshot dalla TV (HTTPS con certificato autofirmato).
+//! Download of the screenshot image from the TV (HTTPS with a self-signed certificate).
 
 use std::{
     io::{Read, Write},
@@ -10,7 +10,7 @@ fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     hay.windows(needle.len()).position(|w| w == needle)
 }
 
-/// Decodifica un corpo HTTP con `Transfer-Encoding: chunked`.
+/// Decodes an HTTP body sent with `Transfer-Encoding: chunked`.
 fn dechunk(mut b: &[u8]) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     loop {
@@ -32,9 +32,9 @@ fn dechunk(mut b: &[u8]) -> Option<Vec<u8>> {
     }
 }
 
-/// Separa intestazioni e corpo di una risposta HTTP; restituisce il corpo se lo stato è 200.
+/// Splits the headers from the body of an HTTP response; returns the body if the status is 200.
 fn parse_response(raw: &[u8]) -> Result<Vec<u8>, String> {
-    let split = find(raw, b"\r\n\r\n").ok_or("risposta HTTP incompleta")?;
+    let split = find(raw, b"\r\n\r\n").ok_or_else(|| crate::i18n::t("http_incomplete"))?;
     let head = String::from_utf8_lossy(&raw[..split]).to_string();
     let status = head.lines().next().unwrap_or("");
     if !status.contains(" 200") {
@@ -42,14 +42,14 @@ fn parse_response(raw: &[u8]) -> Result<Vec<u8>, String> {
     }
     let body = &raw[split + 4..];
     if head.to_ascii_lowercase().contains("transfer-encoding: chunked") {
-        dechunk(body).ok_or_else(|| "corpo della risposta non valido".to_string())
+        dechunk(body).ok_or_else(|| crate::i18n::t("body_invalid"))
     } else {
         Ok(body.to_vec())
     }
 }
 
 pub fn https_get(url: &str) -> Result<Vec<u8>, String> {
-    let rest = url.strip_prefix("https://").ok_or("l'indirizzo dell'immagine non è https")?;
+    let rest = url.strip_prefix("https://").ok_or_else(|| crate::i18n::t("not_https"))?;
     let (hostport, path) = rest
         .split_once('/')
         .map(|(h, p)| (h, format!("/{p}")))
@@ -60,7 +60,7 @@ pub fn https_get(url: &str) -> Result<Vec<u8>, String> {
         .to_socket_addrs()
         .map_err(|e| e.to_string())?
         .next()
-        .ok_or("indirizzo non risolvibile")?;
+        .ok_or_else(|| crate::i18n::t("unresolvable"))?;
 
     let tcp = TcpStream::connect_timeout(&sock, Duration::from_secs(5)).map_err(|e| e.to_string())?;
     tcp.set_read_timeout(Some(Duration::from_secs(10))).map_err(|e| e.to_string())?;
@@ -77,7 +77,7 @@ pub fn https_get(url: &str) -> Result<Vec<u8>, String> {
     tls.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
 
     let mut raw = Vec::new();
-    // Alcuni server chiudono senza close_notify: se abbiamo dati, l'errore si ignora.
+    // Some servers close without close_notify: if we already have data, the error is ignored.
     if let Err(e) = tls.read_to_end(&mut raw) {
         if raw.is_empty() {
             return Err(e.to_string());
@@ -86,7 +86,7 @@ pub fn https_get(url: &str) -> Result<Vec<u8>, String> {
     parse_response(&raw)
 }
 
-/// Data e ora locali per il nome del file: `20261013-153045`.
+/// Local date and time for the file name: `20261013-153045`.
 #[cfg(windows)]
 pub fn local_stamp() -> String {
     #[repr(C)]
@@ -105,7 +105,7 @@ pub fn local_stamp() -> String {
         fn GetLocalTime(st: *mut SystemTime);
     }
     let mut st = SystemTime { year: 0, month: 0, dow: 0, day: 0, hour: 0, minute: 0, second: 0, millis: 0 };
-    // SAFETY: `st` è una struttura SYSTEMTIME valida e scrivibile.
+    // SAFETY: `st` is a valid, writable SYSTEMTIME structure.
     unsafe { GetLocalTime(&mut st) };
     format!(
         "{:04}{:02}{:02}-{:02}{:02}{:02}",
