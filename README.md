@@ -115,6 +115,14 @@ The installer is not signed: Windows shows the SmartScreen warning on first run.
 
 Deferred ideas are in [`ROADMAP.md`](ROADMAP.md).
 
+## Disclaimer and security
+
+- The software is provided "as is", without warranty of any kind, as stated in the
+  [MIT licence](LICENSE). Use it only with devices you own or are allowed to control.
+- It collects no data and sends nothing outside your local network.
+- Third-party licences are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+- To report a security problem, see [`SECURITY.md`](SECURITY.md).
+
 ## Acknowledgements
 
 - The permission manifest (`src-tauri/src/pairing.json`) derives from
