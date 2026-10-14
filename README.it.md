@@ -1,15 +1,24 @@
-# TV Tray
+# TV Tray: telecomando per TV LG webOS dalla barra di Windows
 
 🇬🇧 [English](README.md) · 🇮🇹 Italiano
 
-Piccola app per Windows che vive nella barra delle applicazioni, accanto all'orologio, e
-controlla una **TV LG webOS** sulla stessa rete: telecomando, volume, ingressi, app,
-messaggi a schermo, screenshot e invio di immagini.
+Piccola app per Windows che vive nella barra delle applicazioni, accanto all'orologio, e fa da
+**telecomando LG per Windows 10 e 11**. Controlla una **TV LG webOS** sulla stessa rete:
+telecomando, volume, ingressi, app, messaggi a schermo, screenshot e invio di immagini, e
+accende la TV con **Wake-on-LAN**.
 
-Funziona senza Developer Mode, senza account LG e senza installare nulla sulla TV.
+Funziona senza Developer Mode, senza account LG ThinQ e senza installare nulla sulla TV.
 Usa il protocollo di controllo locale della TV (SSAP, porta 3001).
 
 > Provata su una TV LG con webOS 25. Su altri modelli e versioni il comportamento non è verificato.
+
+<p align="center">
+  <img src="docs/img/panel-it.png" alt="Pannello telecomando di TV Tray" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/img/settings-it.png" alt="Impostazioni di TV Tray" width="300">
+</p>
+
+<sub>Le schermate usano valori di esempio per indirizzo IP e MAC.</sub>
 
 ## Cosa fa
 
@@ -40,7 +49,7 @@ l'indirizzo IP a mano da **Impostazioni**.
 
 ## Dove sono i dati e le chiavi
 
-- La configurazione sta in `%APPDATA%\dev.daniele.tvtray\config.json`: indirizzo IP, MAC e la
+- La configurazione sta in `%APPDATA%\app.tvtray\config.json`: indirizzo IP, MAC e la
   chiave di accoppiamento.
 - La chiave di accoppiamento è **cifrata con la protezione dati di Windows (DPAPI)**: vale solo
   per il tuo utente su questo PC. Se cambi utente o PC bisogna rifare l'accoppiamento.

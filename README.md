@@ -1,15 +1,24 @@
-# TV Tray
+# TV Tray: LG webOS TV remote for the Windows system tray
 
 🇬🇧 English · 🇮🇹 [Italiano](README.it.md)
 
-A small Windows app that lives in the system tray, next to the clock, and controls an
-**LG webOS TV** on the same network: remote, volume, inputs, apps, on-screen messages,
-screenshots and image sending.
+A small Windows app that lives in the system tray, next to the clock, and works as an
+**LG TV remote control for Windows 10 and 11**. It controls an **LG webOS TV** on the same
+network: remote, volume, inputs, apps, on-screen messages, screenshots and image sending, and
+turns the TV on with **Wake-on-LAN**.
 
-It works without Developer Mode, without an LG account and without installing anything on the TV.
-It uses the TV's local control protocol (SSAP, port 3001).
+It works without Developer Mode, without an LG ThinQ account and without installing anything on
+the TV. It uses the TV's local control protocol (SSAP, port 3001).
 
 > Tested on an LG TV running webOS 25. Behaviour on other models and versions is not verified.
+
+<p align="center">
+  <img src="docs/img/panel-en.png" alt="TV Tray remote panel" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/img/settings-en.png" alt="TV Tray settings" width="300">
+</p>
+
+<sub>Screenshots use placeholder values for the IP and MAC address.</sub>
 
 ## Features
 
@@ -40,7 +49,7 @@ IP address by hand in **Settings**.
 
 ## Where data and keys are stored
 
-- Configuration lives in `%APPDATA%\dev.daniele.tvtray\config.json`: IP address, MAC address,
+- Configuration lives in `%APPDATA%\app.tvtray\config.json`: IP address, MAC address,
   language and the pairing key.
 - The pairing key is **encrypted with Windows data protection (DPAPI)**: it is valid only for your
   user on this PC. If you change user or PC you need to pair again.
