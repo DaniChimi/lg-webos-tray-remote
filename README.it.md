@@ -115,6 +115,14 @@ L'installer non è firmato: Windows mostra l'avviso SmartScreen alla prima esecu
 
 Le idee rimandate sono in [`ROADMAP.md`](ROADMAP.md) (in inglese).
 
+## Avvertenze e sicurezza
+
+- Il software è fornito «così com'è», senza garanzie di alcun tipo, come indicato nella
+  [licenza MIT](LICENSE). Usalo solo con dispositivi tuoi o che sei autorizzato a controllare.
+- Non raccoglie dati e non invia nulla fuori dalla tua rete locale.
+- Le licenze di terze parti sono elencate in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+- Per segnalare un problema di sicurezza vedi [`SECURITY.md`](SECURITY.md).
+
 ## Riconoscimenti
 
 - Il manifesto dei permessi (`src-tauri/src/pairing.json`) deriva da
